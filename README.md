@@ -1,0 +1,2 @@
+# Autism-project
+A Multimodal Wearable and Camera-Based System for Behavior Monitoring and Personalized Intervention in Children with Autism
