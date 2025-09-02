@@ -4,7 +4,8 @@
 - 严重性
 - 社会挑战
 ## Clinical Survey: Diagnosis Scales & Bio-markers
-[www.crrc.com.cn/html/news/articles/9724.html](https://www.crrc.com.cn/html/news/articles/9724.html)
+[CCMD3中国标准](https://www.crrc.com.cn/html/news/articles/9724.html)
+[]
 ## Health Monitoring Using Smart Watches
 ## Other wearable Devices
 
