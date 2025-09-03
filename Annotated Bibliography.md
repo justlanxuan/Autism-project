@@ -11,7 +11,7 @@
 [WearSense: Detecting Autism Stereotypic Behaviors through Smartwatches](https://www.mdpi.com/2227-9032/5/1/11)
 - used the inbuilt accelerometer of a smartwatch to detect three behaviors, including hand **flapping, painting, and sibbing**
 - Data streaming via smartphone with an app to collect the accelerometer sensor data and Moto360(smart watch)
-
+- 14(2 patients) subjects aged 20-30 performing given 3 tasks, accuracy: 94%
 [SmartPoser: Arm Pose Estimation with a Smartphone and Smartwatch Using UWB and IMU Data](https://dl.acm.org/doi/pdf/10.1145/3586183.3606821)
 - Device: iPhone + Apple Watch Series 7
 ## Camera
