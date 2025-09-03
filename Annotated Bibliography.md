@@ -18,6 +18,12 @@
 
 [Using deep learning to classify developmental differences in reaching and placing movements in children with and without autism spectrum disorder](https://www.nature.com/articles/s41598-024-81652-z?fromPaywallRec=false)
 ## Camera
+[MMASD: A Multimodal Dataset for Autism Intervention Analysis](https://arxiv.org/pdf/2306.08243)
+
+[Introducing CALMED: Multimodal Annotated Dataset
+for Emotion Detection in Children with Autism
+](https://hal.science/hal-04168999/file/HCII_2023___Introducing_CALMED__Multimodal_Annotated_Dataset_for_Emotion_Detection_in_Children_with_Autism.pdf)
+- Emotion Detection using audio and video
 
 ## Dataset for Autism Behavior Detection and Bio-signals
 [Engagnition: A multi-dimensional dataset for engagement recognition of children with autism spectrum disorder](https://www.nature.com/articles/s41597-024-03132-3)
