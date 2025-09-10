@@ -24,7 +24,10 @@
 for Emotion Detection in Children with Autism
 ](https://hal.science/hal-04168999/file/HCII_2023___Introducing_CALMED__Multimodal_Annotated_Dataset_for_Emotion_Detection_in_Children_with_Autism.pdf)
 - Emotion Detection using audio and video
-- [Hear Me, See Me, Understand Me: Audio-Visual Autism Behavior Recognition](https://arxiv.org/abs/2406.02554)
+
+[Hear Me, See Me, Understand Me: Audio-Visual Autism Behavior Recognition](https://arxiv.org/abs/2406.02554)
+
+[Deep Learning for Early Autism Screening: Analysis of Hand-Flapping Motions in Infants](https://ieeexplore.ieee.org/abstract/document/10851000?casa_token=7Hy4sLqa78kAAAAA:YCNPS9RvccbM62Cu324oju31hQ9i_7sKnmdINXOkiybf4HkJqoRy4LGvLdVCAqxHVT_tUhC8bQ)
 
 ## Dataset for Autism Behavior Detection and Bio-signals
 [Engagnition: A multi-dimensional dataset for engagement recognition of children with autism spectrum disorder](https://www.nature.com/articles/s41597-024-03132-3)
