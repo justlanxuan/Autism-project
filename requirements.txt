@@ -1,0 +1,23 @@
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+tqdm>=4.64.0
+
+opencv-python>=4.8.0
+mediapipe>=0.10.14
+PyYAML>=6.0
+matplotlib>=3.7.0
+
+# 检测和跟踪库
+ultralytics>=8.0.210
+filterpy>=1.4.5
+
+# transformers for video models
+transformers>=4.33.0
+decord>=0.6.0
+
+opencv-python

@@ -1,0 +1,13 @@
+data_root: /data/lxhong/mmact_data
+video_root: /data/lxhong/mmact_data/trimmed_camera1/video/test
+sensor_root: /data/lxhong/mmact_data/trimmed_sensor/sensor/test
+annotation_root: /data/lxhong/mmact_data/annotation
+report_root: /home/lxhong/mmact/report
+yolo_weight: /home/lxhong/mmact/utils/yolov8m.pt
+device: cuda
+
+batch_size: 8
+embedding_dim: 256
+lr: 1e-4
+num_epochs: 150
+save_dir: ./checkpoints/
