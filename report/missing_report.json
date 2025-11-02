@@ -8,7 +8,7 @@
     "imu_start": "2021-11-19 14:41:25.589",
     "imu_end": "2021-11-19 14:41:28.933",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/standing/person11_12.subject11.standing.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/standing/person11_12.subject11.standing.csv"
   },
   {
     "group": "subject11_12",
@@ -19,7 +19,7 @@
     "imu_start": "2021-11-19 14:41:07.507",
     "imu_end": "2021-11-19 14:41:12.124",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/crouching/person11_12.subject11.crouching.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/crouching/person11_12.subject11.crouching.csv"
   },
   {
     "group": "subject11_12",
@@ -30,7 +30,7 @@
     "imu_start": "2021-11-19 14:40:50.499",
     "imu_end": "2021-11-19 14:40:54.738",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/walking/person11_12.subject11.walking.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/walking/person11_12.subject11.walking.csv"
   },
   {
     "group": "subject11_12",
@@ -41,7 +41,7 @@
     "imu_start": "2021-11-19 14:40:36.387",
     "imu_end": "2021-11-19 14:40:40.616",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/running/person11_12.subject11.running.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/running/person11_12.subject11.running.csv"
   },
   {
     "group": "subject11_12",
@@ -52,7 +52,7 @@
     "imu_start": "2021-11-19 14:35:12.657",
     "imu_end": "2021-11-19 14:35:14.418",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/picking_up/person11_12.subject11.picking_up.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/picking_up/person11_12.subject11.picking_up.csv"
   },
   {
     "group": "subject11_12",
@@ -63,7 +63,7 @@
     "imu_start": "2021-11-19 14:34:30.921",
     "imu_end": "2021-11-19 14:34:33.578",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/fall/person11_12.subject11.fall.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person11_12/subject11/fall/person11_12.subject11.fall.csv"
   },
   {
     "group": "subject13_14",
@@ -74,7 +74,7 @@
     "imu_start": "2021-11-19 14:54:31.127",
     "imu_end": "2021-11-19 14:54:40.731",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/standing/person13_14.subject13.standing.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/standing/person13_14.subject13.standing.csv"
   },
   {
     "group": "subject13_14",
@@ -85,7 +85,7 @@
     "imu_start": "2021-11-19 14:54:17.751",
     "imu_end": "2021-11-19 14:54:21.433",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/crouching/person13_14.subject13.crouching.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/crouching/person13_14.subject13.crouching.csv"
   },
   {
     "group": "subject13_14",
@@ -96,7 +96,7 @@
     "imu_start": "2021-11-19 14:54:05.470",
     "imu_end": "2021-11-19 14:54:10.227",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/walking/person13_14.subject13.walking.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/walking/person13_14.subject13.walking.csv"
   },
   {
     "group": "subject13_14",
@@ -107,7 +107,7 @@
     "imu_start": "2021-11-19 14:53:46.342",
     "imu_end": "2021-11-19 14:53:54.184",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/running/person13_14.subject13.running.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/running/person13_14.subject13.running.csv"
   },
   {
     "group": "subject13_14",
@@ -118,7 +118,7 @@
     "imu_start": "2021-11-19 14:48:29.465",
     "imu_end": "2021-11-19 14:48:32.470",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/picking_up/person13_14.subject13.picking_up.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/picking_up/person13_14.subject13.picking_up.csv"
   },
   {
     "group": "subject13_14",
@@ -129,7 +129,7 @@
     "imu_start": "2021-11-19 14:47:51.787",
     "imu_end": "2021-11-19 14:47:55.628",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/fall/person13_14.subject13.fall.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person13_14/subject13/fall/person13_14.subject13.fall.csv"
   },
   {
     "group": "subject15_16",
@@ -140,7 +140,7 @@
     "imu_start": "2021-11-19 15:05:20.803",
     "imu_end": "2021-11-19 15:05:26.157",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/standing/person15_16.subject15.standing.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/standing/person15_16.subject15.standing.csv"
   },
   {
     "group": "subject15_16",
@@ -151,7 +151,7 @@
     "imu_start": "2021-11-19 15:05:09.805",
     "imu_end": "2021-11-19 15:05:14.453",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/crouching/person15_16.subject15.crouching.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/crouching/person15_16.subject15.crouching.csv"
   },
   {
     "group": "subject15_16",
@@ -162,7 +162,7 @@
     "imu_start": "2021-11-19 15:04:55.902",
     "imu_end": "2021-11-19 15:05:01.425",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/walking/person15_16.subject15.walking.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/walking/person15_16.subject15.walking.csv"
   },
   {
     "group": "subject15_16",
@@ -173,7 +173,7 @@
     "imu_start": "2021-11-19 14:59:30.746",
     "imu_end": "2021-11-19 14:59:36.827",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/fall/person15_16.subject15.fall.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person15_16/subject15/fall/person15_16.subject15.fall.csv"
   },
   {
     "group": "subject17_1",
@@ -184,7 +184,7 @@
     "imu_start": "2021-11-19 15:19:43.183",
     "imu_end": "2021-11-19 15:19:53.480",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/standing/person17_1.subject1.standing.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/standing/person17_1.subject1.standing.csv"
   },
   {
     "group": "subject17_1",
@@ -195,7 +195,7 @@
     "imu_start": "2021-11-19 15:19:59.010",
     "imu_end": "2021-11-19 15:20:03.515",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/crouching/person17_1.subject1.crouching.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/crouching/person17_1.subject1.crouching.csv"
   },
   {
     "group": "subject17_1",
@@ -206,7 +206,7 @@
     "imu_start": "2021-11-19 15:20:11.026",
     "imu_end": "2021-11-19 15:20:22.479",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/walking/person17_1.subject1.walking.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/walking/person17_1.subject1.walking.csv"
   },
   {
     "group": "subject17_1",
@@ -217,7 +217,7 @@
     "imu_start": "2021-11-19 15:20:30.161",
     "imu_end": "2021-11-19 15:20:35.199",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/running/person17_1.subject1.running.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person17_1/subject1/running/person17_1.subject1.running.csv"
   },
   {
     "group": "subject18_19",
@@ -228,7 +228,7 @@
     "imu_start": "2021-11-19 15:36:58.220",
     "imu_end": "2021-11-19 15:37:06.013",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person18_19/subject18/standing/person18_19.subject18.standing.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person18_19/subject18/standing/person18_19.subject18.standing.csv"
   },
   {
     "group": "subject18_19",
@@ -239,7 +239,7 @@
     "imu_start": "2021-11-19 15:37:11.327",
     "imu_end": "2021-11-19 15:37:18.414",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person18_19/subject18/crouching/person18_19.subject18.crouching.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person18_19/subject18/crouching/person18_19.subject18.crouching.csv"
   },
   {
     "group": "subject18_19",
@@ -250,7 +250,7 @@
     "imu_start": "2021-11-19 15:37:28.376",
     "imu_end": "2021-11-19 15:37:36.010",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person18_19/subject18/walking/person18_19.subject18.walking.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person18_19/subject18/walking/person18_19.subject18.walking.csv"
   },
   {
     "group": "subject6_7_8",
@@ -261,6 +261,6 @@
     "imu_start": "2021-11-19 16:13:27.310",
     "imu_end": "2021-11-19 16:13:35.550",
     "imu_ok": false,
-    "csv_path": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person6_7_8/subject6/standing/person6_7_8.subject6.standing.csv"
+    "csv_path": "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person6_7_8/subject6/standing/person6_7_8.subject6.standing.csv"
   }
 ]

@@ -8,14 +8,14 @@ from src.video_encoder import VideoActionEncoder
 device = "cpu"
 
 # ✅ 固定样本路径
-video_path = "/data/lxhong/mmact_data/trimmed_camera1/video/test/camera1/subject1-1/subject1/subject1-1.subject1.waving_hand.mp4"
+video_path = "${paths.data_root}/trimmed_camera1/video/test/camera1/subject1-1/subject1/subject1-1.subject1.waving_hand.mp4"
 imu_item = {
     "group": "subject1-1",
     "action": "waving_hand",
     "sensor": {
-        "acc":  "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/acc2_clip/camera1/person1-1/subject1/waving_hand/person1-1.subject1.waving_hand.csv",
-        "gyro": "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/gyro_clip/camera1/person1-1/subject1/waving_hand/person1-1.subject1.waving_hand.csv",
-        "ori":  "/data/lxhong/mmact_data/trimmed_sensor/sensor/test/orientation_clip/camera1/person1-1/subject1/waving_hand/person1-1.subject1.waving_hand.csv"
+        "acc":  "${paths.data_root}/trimmed_sensor/sensor/test/acc2_clip/camera1/person1-1/subject1/waving_hand/person1-1.subject1.waving_hand.csv",
+        "gyro": "${paths.data_root}/trimmed_sensor/sensor/test/gyro_clip/camera1/person1-1/subject1/waving_hand/person1-1.subject1.waving_hand.csv",
+        "ori":  "${paths.data_root}/trimmed_sensor/sensor/test/orientation_clip/camera1/person1-1/subject1/waving_hand/person1-1.subject1.waving_hand.csv"
     }
 }
 
