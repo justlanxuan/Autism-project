@@ -2,7 +2,13 @@
 
 Workflow in linux
 1. Replace config settings at config.yaml
-2. run setup.sh
-```sh
+2. setup
+```
+conda create mmact
+conda activate mmact
+pip install -r requirements.txt
+```
+3. find the pairs
+4. 
 
 ``` 
