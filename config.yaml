@@ -4,10 +4,9 @@
 
 paths:
   project_root: .
-  data_root: ./mmact_data
+  data_root: /data/lxhong/mmact_data
   video_root: ${paths.data_root}/trimmed_camera1/video/test
   sensor_root: ${paths.data_root}/trimmed_sensor/sensor/test
-  annotation_root: ${paths.data_root}/annotation
   report_root: ./report
 
 # ========================
@@ -19,5 +18,5 @@ training:
   embedding_dim: 256
   lr: 1e-4
   num_epochs: 150
-  yolo_weight: ./utils/yolov8m.pt
+  yolo_weight: ./checkpoints/yolov8m.pt
   save_dir: ./checkpoints
