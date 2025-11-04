@@ -3,9 +3,8 @@ from tqdm import tqdm
 from ultralytics import YOLO
 import mediapipe as mp
 
-# ========= 初始化 =========
 def init_yolo():
-    return YOLO("./checkpoints/yolov8m.pt")
+    return YOLO("./checkpoints/yolov8m.pt") #YOLO path
 
 def draw_point(frame, point, color):
     if np.any(point[:2]) and point[2] > 0.1:
@@ -22,8 +21,6 @@ def detect_person_yolo(yolo_model, frame, conf=0.5):
                 boxes.append([int(x1), int(y1), int(x2), int(y2)])
     return boxes
 
-
-# ========= 各种算法的右腕提取 =========
 
 def get_wrists_mediapipe(frame, mp_pose, person_boxes):
     wrists = []
@@ -70,21 +67,18 @@ def get_wrists_openpose(frame, opWrapper):
             wrists.append(np.array([x, y, c]))
     return wrists
 
-
-# ========= 主函数 =========
 def preview_video(video_path, methods=("mediapipe",), save_root="report/preview_frames"):
     os.makedirs(save_root, exist_ok=True)
     cap = cv2.VideoCapture(video_path)
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     indices = sorted(random.sample(range(total), min(10, total)))
-
-    # YOLO 初始化一次
+    # YOLO
     yolo_model = init_yolo()
 
-    # Mediapipe 初始化
+    # Mediapipe
     mp_pose = mp.solutions.pose
 
-    # 若含 MMPose，则初始化
+    # MMPose
     mmpose_model = None
     if "mmpose" in methods:
         from mmpose.apis import init_pose_model
@@ -92,7 +86,7 @@ def preview_video(video_path, methods=("mediapipe",), save_root="report/preview_
         ckpt = "checkpoints/hrnet_w32_coco_256x192.pth"
         mmpose_model = init_pose_model(cfg, ckpt, device="cuda")
 
-    # 若含 OpenPose，则初始化
+    # OpenPose
     openpose_model = None
     if "openpose" in methods:
         from openpose import pyopenpose as op
@@ -100,11 +94,10 @@ def preview_video(video_path, methods=("mediapipe",), save_root="report/preview_
         openpose_model.configure({"model_folder": "./models/"})
         openpose_model.start()
 
-    # ====== 抽帧测试 ======
     for method in methods:
         save_dir = os.path.join(save_root, method)
         os.makedirs(save_dir, exist_ok=True)
-        print(f"\n🎯 Testing {method} → {save_dir}")
+        print(f"\n Testing {method} → {save_dir}")
 
         for i, idx in enumerate(tqdm(indices, desc=f"{method} frames")):
             cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
@@ -125,7 +118,6 @@ def preview_video(video_path, methods=("mediapipe",), save_root="report/preview_
             else:
                 continue
 
-            # 绘制方框和点
             for (x1, y1, x2, y2) in boxes:
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 255), 2)
             for w in wrists:
@@ -135,10 +127,10 @@ def preview_video(video_path, methods=("mediapipe",), save_root="report/preview_
             cv2.imwrite(save_path, frame)
 
     cap.release()
-    print(f"\n✅ 所有方法测试帧已保存到: {os.path.abspath(save_root)}")
+    print(f"\n 所有方法测试帧已保存到: {os.path.abspath(save_root)}")
 
 
 if __name__ == "__main__":
     test_video = "report/results_skeletons/subject1-1.subject1.walking_skeleton.mp4"
-    # 可选项：('mediapipe',), ('mmpose',), ('openpose',)
+    # ('mediapipe',), ('mmpose',), ('openpose',)
     preview_video(test_video, methods=("mediapipe","mmpose"))
