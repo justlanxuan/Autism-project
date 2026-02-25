@@ -3,14 +3,14 @@ from typing import Dict,Any,Optional,List,Union
 from torch.utils.data import Dataset
 from pathlib import Path
 import numpy as np
-
+# Pre-Process modules
 class BaseProcess(ABC):
     @abstractmethod
     def __call__(self,data:Any)->Any:
         pass
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
-
+# Dataset
 class BaseData(Dataset, ABC):
     def __init__(
             self, 
@@ -95,7 +95,7 @@ class BaseData(Dataset, ABC):
         
         return data
 
-
+# TODO: Add more pre-process here!
 class Identity(BaseProcess):
     
     def __call__(self, data: Any) -> Any:
@@ -125,3 +125,26 @@ class ToTensor(BaseProcess):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
     
+class VideoProcess(BaseProcess):
+    def __init__(self, num_frames: int) -> None:
+        self.num_frames = num_frames
+    def __call__(self, frames: np.ndarray) -> np.ndarray:
+        # TODO
+        T = len(frames)
+        if T <= self.num_frames:
+            indices = list(range(T)) + [T-1] * (self.num_frames - T)
+        indices = np.linspace(0, T-1, self.num_frames, dtype=int)
+        return frames[indices]
+    def __repr__(self) -> str:
+        # TODO
+        return f"{self.__class__.__name__}(num_frames={self.num_frames}')"
+    
+class IMUProcess(BaseProcess):
+    def __init__(self,init = int) -> None:
+        self.init = init
+    def __call__(self, data: np.ndarray) -> np.ndarray:
+        # TODO
+        return super().__call__(data)
+    def __repr__(self) -> str:
+        # TODO
+        return super().__repr__()
