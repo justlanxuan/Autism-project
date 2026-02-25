@@ -148,3 +148,15 @@ class IMUProcess(BaseProcess):
     def __repr__(self) -> str:
         # TODO
         return super().__repr__()
+class Compose(BaseProcess):
+    def __init__(self, processes: List[BaseProcess]):
+        self.processes = processes
+    
+    def __call__(self, data: Any) -> Any:
+        for process in self.processes:
+            data = process(data)
+        return data
+    
+    def __repr__(self) -> str:
+        process_strs = [str(p) for p in self.processes]
+        return f"{self.__class__.__name__}([\n  " + ",\n  ".join(process_strs) + "\n])"
