@@ -1,0 +1,23 @@
+# environment.yml
+name: reid
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+
+dependencies:
+  # pytorch
+  - python=3.10
+  - pytorch>=2.0.0
+  - torchvision>=0.15.0
+  - pytorch-cuda=12.1
+
+  # data processing
+  - numpy
+  - pillow
+  - opencv
+
+  # toolkit
+  - jupyter
+  - matplotlib
+  - tqdm

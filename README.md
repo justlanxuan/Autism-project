@@ -1,4 +1,15 @@
-# Workflow
-- Follow the instructions in flow.py and run.py (prototypes provided)
-- Focus on each function itself
-- Refer to "past" folder for some part of the function
+# Autism Reid Project
+
+## Setup
+
+1. create a new environment
+
+```sh
+conda env create -f environment.yml
+```
+
+2. update the environment (Do it every time you change the environment.yml file)
+
+```sh
+conda env update -f environment.yml --prune
+```
