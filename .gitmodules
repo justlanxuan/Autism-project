@@ -1,0 +1,6 @@
+[submodule "third-party/AlphaPose"]
+	path = third-party/AlphaPose
+	url = https://github.com/L-Ark/AlphaPose.git
+[submodule "third-party/ByteTrack"]
+	path = third-party/ByteTrack
+	url = https://github.com/ifzhang/ByteTrack.git
