@@ -3,4 +3,4 @@
 	url = https://github.com/L-Ark/AlphaPose.git
 [submodule "third-party/ByteTrack"]
 	path = third-party/ByteTrack
-	url = https://github.com/ifzhang/ByteTrack.git
+	url = https://github.com/L-Ark/ByteTrack.git

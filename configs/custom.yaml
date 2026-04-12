@@ -1,0 +1,38 @@
+# 自定义数据集配置（4-fold 交叉验证）
+# 适用于 2-person matching 场景
+
+dataset: custom
+
+# 4-fold 交叉验证
+folds: [1, 2, 3, 4]
+
+model:
+  motionbert_root: /home/fzliang/origin/MotionBERT
+  motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
+  motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
+  imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth
+
+paths:
+  data_root: ./data/processed/custom
+  train_csv: ./data/processed/custom/folds/fold_{fold}/windows_train.csv
+  val_csv: ./data/processed/custom/folds/fold_{fold}/windows_val.csv
+  test_csv: ./data/processed/custom/folds/fold_{fold}/windows_test.csv
+
+output:
+  output_root: ./artifacts
+  save_dir: .
+  run_name: custom_fold{fold}
+
+train:
+  epochs: 150
+  batch_size: 64
+  num_workers: 8
+  compute_imu_stats: true
+  imu_sensor: R_LowArm
+  repeat_single_sensor: 4
+
+test:
+  batch_size: 64
+  mode: custom_2person
+  eval_mode: same_time_2person
+  chunk_windows: 30

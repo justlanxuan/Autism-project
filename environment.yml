@@ -1,23 +1,60 @@
-# environment.yml
-name: reid
+# Autism Project - Complete Environment Configuration
+# 
+# Installation Instructions:
+#   1. Install Miniconda: wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+#   2. bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+#   3. export PATH="$HOME/miniconda3/bin:$PATH"
+#   4. conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+#   5. conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+#   6. conda env create -f environment.yml
+#   7. conda activate autism_reid
+#
+# Note: Installation requires ~4GB download
+
+name: autism_reid
 channels:
   - pytorch
   - nvidia
   - conda-forge
 
 dependencies:
-  # pytorch
+  # Core Python & PyTorch
   - python=3.10
   - pytorch>=2.0.0
   - torchvision>=0.15.0
-  - pytorch-cuda=12.1
-
-  # data processing
-  - numpy
+  - pytorch-cuda=11.8
+  
+  # Data Processing
+  - numpy=1.26
+  - scipy=1.11
+  - pandas
+  - pyyaml
   - pillow
   - opencv
-
-  # toolkit
-  - jupyter
+  
+  # Visualization & Tools
   - matplotlib
   - tqdm
+  - cython
+  - imageio
+  - pip
+  
+  # Pip dependencies
+  - pip:
+    # ByteTrack & AlphaPose dependencies
+    - thop
+    - loguru
+    - tabulate
+    - lap
+    - cython-bbox
+    - easydict
+    - halpecocotools
+    - munkres
+    - natsort
+    - pycocotools
+    - yapf
+    - tensorboard
+    - timm
+    - einops
+    - scikit-learn
+    - scikit-image

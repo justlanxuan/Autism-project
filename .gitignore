@@ -1,0 +1,9 @@
+artifacts/
+experiments/alignment/
+data/processed/
+src/data/processed/
+data/interim/
+src/data/interim/
+src/data/output/
+**/__pycache__/
+*.pyc
