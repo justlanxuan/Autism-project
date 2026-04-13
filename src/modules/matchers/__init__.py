@@ -1,31 +1,32 @@
 """Matchers module for cross-modal association and alignment."""
 
-from src.modules.matchers.imu_video_matcher import (
-    IMUEncoder,
-    IMUVideoMatcher,
-    VideoEncoder,
-    build_motionbert_backbone,
-    load_despite_imu_weights,
-    load_motionbert_checkpoint,
-)
+from src.modules.matchers.base import BaseMatcher
+from src.modules.matchers.hungarian import HungarianMatcher
 from src.modules.matchers.losses import SymmetricInfoNCE, retrieval_top1
 
+# Deep-learning matchers
+from src.modules.matchers.dl_matchers.imu_video_matcher import IMUVideoMatcher
+from src.modules.matchers.dl_matchers.despite_matcher import DeSPITEMatcher
+
+# Encoders (backward-compatible re-exports)
+from src.modules.encoders.imu import IMUEncoder
+from src.modules.encoders.video import VideoEncoder
+from src.modules.encoders.utils import (
+    build_motionbert_backbone,
+    load_motionbert_checkpoint,
+    load_despite_imu_weights,
+)
+
 __all__ = [
-    # IMU-Video matching
+    "BaseMatcher",
+    "HungarianMatcher",
+    "SymmetricInfoNCE",
+    "retrieval_top1",
+    "IMUVideoMatcher",
+    "DeSPITEMatcher",
     "IMUEncoder",
     "VideoEncoder",
-    "IMUVideoMatcher",
     "build_motionbert_backbone",
     "load_motionbert_checkpoint",
     "load_despite_imu_weights",
-    # Losses
-    "SymmetricInfoNCE",
-    "retrieval_top1",
-    # Base
-    "BaseMatcher",
-    "HungarianMatcher",
 ]
-
-# Import base classes
-from src.modules.matchers.base import BaseMatcher
-from src.modules.matchers.hungarian import HungarianMatcher

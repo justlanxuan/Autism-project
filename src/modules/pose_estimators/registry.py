@@ -1,18 +1,11 @@
-"""Registration helpers for pose estimators."""
+"""Pose estimator registry."""
 
-from __future__ import annotations
+from src.utils.factory import Registry
 
-from src.core.registry import POSE_ESTIMATOR_REGISTRY
+POSE_ESTIMATOR_REGISTRY = Registry()
 
-from .alphapose_pose_estimator import build_alphapose_pose_estimator
-from .wham_3d_estimator import build_wham_3d_estimator
+from src.modules.pose_estimators.alphapose import build_alphapose_pose_estimator
+from src.modules.pose_estimators.wham_3d import build_wham_3d_estimator
 
-
-@POSE_ESTIMATOR_REGISTRY.register("alphapose")
-def _build_alphapose(config_dict):
-    return build_alphapose_pose_estimator(config_dict)
-
-
-@POSE_ESTIMATOR_REGISTRY.register("wham_3d")
-def _build_wham_3d(config_dict):
-    return build_wham_3d_estimator(config_dict)
+POSE_ESTIMATOR_REGISTRY.register("alphapose")(build_alphapose_pose_estimator)
+POSE_ESTIMATOR_REGISTRY.register("wham_3d")(build_wham_3d_estimator)

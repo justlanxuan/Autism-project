@@ -45,7 +45,7 @@ echo "=========================================="
 
 if [ ! -d "${PROCESSED_DIR}/folds" ]; then
     echo "Running preprocessing..."
-    ${VENV} -m src.data.preprocess_custom_4fold \
+    ${VENV} -m src.data.slice.custom_4fold \
         --motionbert_root "${MOTIONBERT_ROOT}" \
         --preprocessed_root "${PREPROCESSED_ROOT}" \
         --results_root "${RESULTS_ROOT}" \

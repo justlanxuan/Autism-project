@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 import time
 from pathlib import Path
 from typing import Dict
@@ -15,16 +14,8 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.datasets.alignment_dataset import WindowAlignmentDataset
-from src.modules.matchers import (
-    IMUEncoder,
-    IMUVideoMatcher,
-    VideoEncoder,
-    build_motionbert_backbone,
-    load_despite_imu_weights,
-    load_motionbert_checkpoint,
-    SymmetricInfoNCE,
-    retrieval_top1,
-)
+from src.engine.common import build_alignment_model, build_optimizer, build_loss_fn
+from src.modules.matchers import retrieval_top1
 
 
 def parse_args() -> argparse.Namespace:
@@ -257,64 +248,18 @@ def main() -> None:
             drop_last=False,
         )
 
-    motionbert_root = Path(args.motionbert_root).expanduser().resolve()
-    if str(motionbert_root) not in sys.path:
-        sys.path.insert(0, str(motionbert_root))
-
-    config_path = Path(args.motionbert_config)
-    if not config_path.is_absolute():
-        config_path = motionbert_root / config_path
-
-    ckpt_path = Path(args.motionbert_ckpt) if args.motionbert_ckpt else None
-    if ckpt_path is not None and not ckpt_path.is_absolute():
-        ckpt_path = motionbert_root / ckpt_path
-
-    backbone, cfg = build_motionbert_backbone(str(config_path))
-    if not args.skip_motionbert_ckpt:
-        if ckpt_path is None:
-            raise ValueError("--motionbert_ckpt is required unless --skip_motionbert_ckpt is set.")
-        load_motionbert_checkpoint(backbone, str(ckpt_path), strict=True)
-    else:
-        print("[WARN] skip_motionbert_ckpt enabled: using randomly initialized MotionBERT backbone.")
-
-    imu_encoder = IMUEncoder(input_size=48, hidden_size=args.embed_dim, num_layers=2, device=str(device))
-    if args.imu_ckpt:
-        imu_ckpt = Path(args.imu_ckpt).expanduser()
-        if imu_ckpt.exists():
-            load_despite_imu_weights(imu_encoder, str(imu_ckpt), strict=False)
-        else:
-            print(f"[WARN] IMU checkpoint not found at {imu_ckpt}; training IMU encoder from random init.")
-
-    video_encoder = VideoEncoder(backbone=backbone, rep_dim=args.embed_dim, temporal_layers=2)
-    model = IMUVideoMatcher(imu_encoder=imu_encoder, video_encoder=video_encoder).to(device)
-
-    if args.init_alignment_ckpt:
-        init_path = Path(args.init_alignment_ckpt).expanduser()
-        if not init_path.exists():
-            raise FileNotFoundError(f"init_alignment_ckpt not found: {init_path}")
-        raw = torch.load(str(init_path), map_location="cpu")
-        init_state = raw["model"] if isinstance(raw, dict) and "model" in raw else raw
-        missing, unexpected = model.load_state_dict(init_state, strict=False)
-        print(
-            f"Loaded init_alignment_ckpt: {init_path} "
-            f"(missing={len(missing)}, unexpected={len(unexpected)})"
-        )
-
-    backbone_params = [p for p in model.video_encoder.backbone.parameters() if p.requires_grad]
-    head_params = []
-    head_params += [p for p in model.imu_encoder.parameters() if p.requires_grad]
-    head_params += [p for p in model.video_encoder.joint_compress.parameters() if p.requires_grad]
-    head_params += [p for p in model.video_encoder.temporal_lstm.parameters() if p.requires_grad]
-
-    optimizer = torch.optim.AdamW(
-        [
-            {"params": backbone_params, "lr": args.lr_backbone},
-            {"params": head_params, "lr": args.lr_heads},
-        ],
+    model, cfg_name = build_alignment_model(args, device, embed_dim=args.embed_dim)
+    optimizer = build_optimizer(
+        model,
+        lr_backbone=args.lr_backbone,
+        lr_heads=args.lr_heads,
         weight_decay=args.weight_decay,
     )
-
-    loss_fn = SymmetricInfoNCE(temperature=args.temperature, learn_temperature=args.learn_temperature).to(device)
+    loss_fn = build_loss_fn(
+        temperature=args.temperature,
+        learn_temperature=args.learn_temperature,
+        device=device,
+    )
 
     save_dir = resolve_save_dir(args)
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -327,7 +272,7 @@ def main() -> None:
     val_count = len(val_ds) if val_ds is not None else 0
     print(f"Train windows: {len(train_ds)}, Val windows: {val_count}")
     print(f"Trainable params: {count_trainable_params(model):,}")
-    print(f"Backbone cfg name: {cfg.name}")
+    print(f"Backbone cfg name: {cfg_name}")
     print(f"Artifacts directory: {save_dir}")
 
     epoch_logs = []

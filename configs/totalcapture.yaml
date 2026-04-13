@@ -1,9 +1,15 @@
 # TotalCapture 完整版配置
 # 使用 Vicon 3D 骨架（高精度 Ground Truth）
 
-dataset: totalcapture
+project: totalcapture
 
 preprocess:
+  dataset: totalcapture
+  raw_root: /data/fzliang/totalcapture
+  camera: cam1
+  output: ./data/interim/video_manifest.csv
+
+slice:
   root: /data/fzliang/totalcapture
   out_dir: ./data/processed/totalcapture
   window_len: 24
@@ -12,11 +18,11 @@ preprocess:
   train_subjects: S1,S2,S3
   val_subjects: S4
   test_subjects: S5
-  max_sequences: 0  # 0 = 使用所有序列
+  max_sequences: 0
   skeleton_source: vicon
 
 model:
-  motionbert_root: /home/fzliang/origin/MotionBERT
+  motionbert_root: /home/fzliang/MotionBERT
   motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
   motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
   imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth

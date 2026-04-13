@@ -1,7 +1,6 @@
-# TotalCapture 视频流程配置
-# 从视频中提取骨架（AlphaPose + ByteTrack）
+# Test refactored pipeline end-to-end (TotalCapture video workflow)
 
-project: totalcapture_video
+project: test_refact
 
 preprocess:
   dataset: totalcapture
@@ -14,27 +13,28 @@ extract:
   pose_estimator: alphapose
   manifest_csv: ./data/interim/video_manifest.csv
   limit: 1
-  results_root: ./data/interim/video_skeleton_outputs
-  skip_existing: false
+  results_root: ./data/interim/test_refact_skeletons
+  skip_existing: true
   gpu: 0
+  # Role-specific paths (generic names)
   tracker_root: ./third-party/ByteTrack
   tracker_ckpt: /home/fzliang/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar
   pose_estimator_root: ./third-party/AlphaPose
   pose_estimator_cfg: configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml
-  pose_estimator_ckpt: ./third-party/AlphaPose/pretrained_models/fast_res50_256x192.pth
+  pose_estimator_ckpt: pretrained_models/fast_res50_256x192.pth
 
 slice:
   root: /data/fzliang/totalcapture
   skeleton_source: alphapose
-  skeleton_root: ./data/interim/video_skeleton_outputs
-  out_dir: ./data/processed/totalcapture_video
+  skeleton_root: ./data/interim/test_refact_skeletons
+  out_dir: ./data/processed/test_refact
   window_len: 24
   stride: 16
   sensor_order: [L_LowLeg, R_LowLeg, L_LowArm, R_LowArm]
   train_subjects: S1
   val_subjects: S1
   test_subjects: S1
-  max_sequences: 1
+  max_sequences: 0
 
 model:
   motionbert_root: /home/fzliang/origin/MotionBERT
@@ -43,15 +43,15 @@ model:
   imu_ckpt: ""
 
 paths:
-  data_root: ./data/processed/totalcapture_video
-  train_csv: ./data/processed/totalcapture_video/windows_train.csv
-  val_csv: ./data/processed/totalcapture_video/windows_train.csv
-  test_csv: ./data/processed/totalcapture_video/windows_train.csv
+  data_root: ./data/processed/test_refact
+  train_csv: ./data/processed/test_refact/windows_train.csv
+  val_csv: ./data/processed/test_refact/windows_train.csv
+  test_csv: ./data/processed/test_refact/windows_train.csv
 
 output:
   output_root: ./artifacts
   save_dir: .
-  run_name: totalcapture_video
+  run_name: test_refact
 
 train:
   epochs: 2

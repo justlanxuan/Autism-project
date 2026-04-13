@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -16,15 +15,7 @@ from scipy.spatial.distance import cosine
 from torch.utils.data import DataLoader
 
 from src.datasets.alignment_dataset import WindowAlignmentDataset
-from src.modules.matchers import (
-    IMUEncoder,
-    IMUVideoMatcher,
-    VideoEncoder,
-    SymmetricInfoNCE,
-    retrieval_top1,
-    build_motionbert_backbone,
-    load_motionbert_checkpoint,
-)
+from src.engine.common import build_alignment_model
 
 
 def parse_args() -> argparse.Namespace:
@@ -162,33 +153,7 @@ def main() -> None:
         for row in reader:
             rows.append(row)
 
-    motionbert_root = Path(args.motionbert_root).expanduser().resolve()
-    if str(motionbert_root) not in sys.path:
-        sys.path.insert(0, str(motionbert_root))
-
-    # Models already imported from src.modules.matchers
-
-    config_path = Path(args.motionbert_config)
-    if not config_path.is_absolute():
-        config_path = motionbert_root / config_path
-
-    ckpt_path = Path(args.motionbert_ckpt) if args.motionbert_ckpt else None
-    if ckpt_path is not None and not ckpt_path.is_absolute():
-        ckpt_path = motionbert_root / ckpt_path
-
-    backbone, _ = build_motionbert_backbone(str(config_path))
-    if not args.skip_motionbert_ckpt:
-        if ckpt_path is None:
-            raise ValueError("--motionbert_ckpt is required unless --skip_motionbert_ckpt is set.")
-        load_motionbert_checkpoint(backbone, str(ckpt_path), strict=True)
-    else:
-        print("[WARN] skip_motionbert_ckpt enabled: using randomly initialized MotionBERT backbone.")
-
-    model = IMUVideoMatcher(
-        imu_encoder=IMUEncoder(input_size=48, hidden_size=512, num_layers=2, device=str(device)),
-        video_encoder=VideoEncoder(backbone=backbone, rep_dim=512, temporal_layers=2),
-    ).to(device)
-
+    model, _ = build_alignment_model(args, device)
     ckpt = torch.load(args.checkpoint, map_location="cpu")
     model.load_state_dict(ckpt["model"], strict=False)
     model.eval()
@@ -217,58 +182,49 @@ def main() -> None:
         seq_map[seq_name]["vid"].append(vid_all[i])
 
     seq_embeddings = []
-    for seq_name, d in seq_map.items():
+    for seq_name, seq_data in seq_map.items():
         seq_embeddings.append(
             {
                 "seq_name": seq_name,
-                "imu_emb": np.stack(d["imu"], axis=0),
-                "vid_emb": np.stack(d["vid"], axis=0),
+                "imu_emb": np.stack(seq_data["imu"], axis=0),
+                "vid_emb": np.stack(seq_data["vid"], axis=0),
             }
         )
 
-    print(f"Created {len(seq_embeddings)} sequences from {len(rows)} windows")
+    units = build_chunk_units(seq_embeddings, chunk_windows=args.chunk_windows, min_chunk_windows=args.min_chunk_windows)
+    print(f"Built {len(units)} chunk units from {len(seq_embeddings)} sequences")
 
-    # Build chunk units for grouped evaluation
-    units = build_chunk_units(
-        seq_embeddings,
-        chunk_windows=args.chunk_windows,
-        min_chunk_windows=args.min_chunk_windows,
-    )
-    print(f"Built {len(units)} chunk units for grouped evaluation")
+    group_sizes = parse_group_sizes(args.group_sizes)
+    results = []
+    for gs in group_sizes:
+        print(f"Evaluating group_size={gs}...")
+        res = evaluate_grouped(units, gs, num_trials=args.num_trials, seed=args.seed)
+        results.append(res)
+        print(json.dumps(res, indent=2))
 
-    # Evaluate for each group size
-    grouped_results = []
-    for g in parse_group_sizes(args.group_sizes):
-        print(f"Evaluating group size {g}...")
-        result = evaluate_grouped(units, g, num_trials=args.num_trials, seed=args.seed)
-        grouped_results.append(result)
-        if result["mean_acc"] is not None:
-            print(f"  mean_acc={result['mean_acc']:.4f} ± {result['std_acc']:.4f}")
-        else:
-            print(f"  {result.get('note', 'skipped')}")
-
-    payload = {
-        "args": vars(args),
+    summary = {
         "num_sequences": len(seq_embeddings),
         "num_units": len(units),
-        "grouped_results": grouped_results,
+        "chunk_windows": args.chunk_windows,
+        "min_chunk_windows": args.min_chunk_windows,
+        "results": results,
     }
-
-    print("\n" + json.dumps(payload, indent=2))
 
     if args.save_json:
         out_json = Path(args.save_json)
         out_json.parent.mkdir(parents=True, exist_ok=True)
-        out_json.write_text(json.dumps(payload, indent=2))
-        print(f"\nSaved grouped results to {out_json}")
+        out_json.write_text(json.dumps(summary, indent=2))
+        print(f"Saved JSON: {out_json}")
 
     if args.save_csv:
-        import pandas as pd
-
         out_csv = Path(args.save_csv)
         out_csv.parent.mkdir(parents=True, exist_ok=True)
-        pd.DataFrame(grouped_results).to_csv(out_csv, index=False)
-        print(f"Saved CSV to {out_csv}")
+        with out_csv.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=results[0].keys())
+            writer.writeheader()
+            for r in results:
+                writer.writerow(r)
+        print(f"Saved CSV: {out_csv}")
 
 
 if __name__ == "__main__":

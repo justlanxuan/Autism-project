@@ -1,18 +1,12 @@
-"""Matcher registry entries."""
+"""Matcher registry."""
 
-from __future__ import annotations
+from src.utils.factory import Registry
 
-from src.core.registry import MATCHER_REGISTRY
+MATCHER_REGISTRY = Registry()
 
-from src.modules.matchers.despite import DeSPITEMatcher
+# Register built-in matchers
 from src.modules.matchers.hungarian import HungarianMatcher
+from src.modules.matchers.dl_matchers.despite_matcher import DeSPITEMatcher
 
-
-@MATCHER_REGISTRY.register("despite")
-def _build_despite_matcher(config_dict):
-    return DeSPITEMatcher(config_dict)
-
-
-@MATCHER_REGISTRY.register("hungarian")
-def _build_hungarian_matcher(config_dict):
-    return HungarianMatcher(config_dict)
+MATCHER_REGISTRY.register("hungarian")(HungarianMatcher)
+MATCHER_REGISTRY.register("despite")(DeSPITEMatcher)

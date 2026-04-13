@@ -1,7 +1,10 @@
 # 自定义数据集配置（4-fold 交叉验证）
 # 适用于 2-person matching 场景
 
-dataset: custom
+project: custom
+
+preprocess:
+  dataset: custom
 
 # 4-fold 交叉验证
 folds: [1, 2, 3, 4]

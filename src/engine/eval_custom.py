@@ -15,14 +15,8 @@ from scipy.optimize import linear_sum_assignment
 from torch.utils.data import DataLoader
 
 from src.datasets.alignment_dataset import WindowAlignmentDataset
-from src.modules.matchers import (
-    IMUEncoder,
-    IMUVideoMatcher,
-    VideoEncoder,
-    SymmetricInfoNCE,
-    build_motionbert_backbone,
-    load_motionbert_checkpoint,
-)
+from src.engine.common import build_alignment_model, build_loss_fn
+from src.modules.matchers import IMUVideoMatcher
 
 
 def parse_args() -> argparse.Namespace:
@@ -63,8 +57,8 @@ def _read_csv_rows(path: Path) -> List[Dict[str, str]]:
 def evaluate_global_top1(model, dataset, device, batch_size, num_workers) -> Dict[str, float]:
     """Standard window-level top-1 accuracy."""
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True)
-    loss_fn = SymmetricInfoNCE(temperature=0.1).to(device)
-    
+    loss_fn = build_loss_fn(temperature=0.1, device=device)
+
     model.eval()
     total_loss = 0.0
     total_correct_ab = 0
@@ -76,22 +70,22 @@ def evaluate_global_top1(model, dataset, device, batch_size, num_workers) -> Dic
             imu = batch["imu"].to(device)
             skel = batch["skeleton"].to(device)
             out = model(imu=imu, skeleton=skel)
-            
+
             loss = loss_fn(out["imu"], out["video"])
             total_loss += float(loss.item()) * imu.shape[0]
-            
+
             z_imu = F.normalize(out["imu"], dim=-1)
             z_vid = F.normalize(out["video"], dim=-1)
             sims = torch.matmul(z_imu, z_vid.t())
             labels = torch.arange(sims.shape[0], device=sims.device)
-            
+
             total_correct_ab += int((sims.argmax(dim=1) == labels).sum().item())
             total_correct_ba += int((sims.argmax(dim=0) == labels).sum().item())
             total_windows += int(sims.shape[0])
 
     top1_ab = float(total_correct_ab) / max(total_windows, 1)
     top1_ba = float(total_correct_ba) / max(total_windows, 1)
-    
+
     return {
         "loss": float(total_loss / max(total_windows, 1)),
         "top1_ab": top1_ab,
@@ -274,31 +268,7 @@ def main() -> None:
         repeat_single_sensor=args.repeat_single_sensor,
     )
 
-    motionbert_root = Path(args.motionbert_root).expanduser().resolve()
-    if str(motionbert_root) not in sys.path:
-        sys.path.insert(0, str(motionbert_root))
-
-    config_path = Path(args.motionbert_config)
-    if not config_path.is_absolute():
-        config_path = motionbert_root / config_path
-
-    ckpt_path = Path(args.motionbert_ckpt) if args.motionbert_ckpt else None
-    if ckpt_path is not None and not ckpt_path.is_absolute():
-        ckpt_path = motionbert_root / ckpt_path
-
-    backbone, _ = build_motionbert_backbone(str(config_path))
-    if not args.skip_motionbert_ckpt:
-        if ckpt_path is None:
-            raise ValueError("--motionbert_ckpt is required unless --skip_motionbert_ckpt is set.")
-        load_motionbert_checkpoint(backbone, str(ckpt_path), strict=True)
-    else:
-        print("[WARN] skip_motionbert_ckpt enabled: using random MotionBERT backbone init.")
-
-    model = IMUVideoMatcher(
-        imu_encoder=IMUEncoder(input_size=48, hidden_size=512, num_layers=2, device=str(device)),
-        video_encoder=VideoEncoder(backbone=backbone, rep_dim=512, temporal_layers=2),
-    ).to(device)
-
+    model, _ = build_alignment_model(args, device)
     ckpt = torch.load(args.checkpoint, map_location="cpu")
     model.load_state_dict(ckpt["model"], strict=False)
 

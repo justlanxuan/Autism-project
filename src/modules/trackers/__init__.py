@@ -1,6 +1,13 @@
-"""Tracker adapters used by Autism-project."""
+"""Trackers module."""
 
-from .alphapose_tracker import AlphaPoseTracker, AlphaPoseTrackerConfig, build_alphapose_tracker
-from .bytetrack_tracker import ByteTrackConfig, ByteTrackTracker, build_bytetrack_tracker
-from . import registry  # noqa: F401
+from src.modules.trackers.base import BaseTracker
+from src.modules.trackers.bytetrack import ByteTrackTracker, build_bytetrack_tracker
+from src.modules.trackers.alphapose import AlphaPoseTracker, build_alphapose_tracker
 
+__all__ = [
+    "BaseTracker",
+    "ByteTrackTracker",
+    "build_bytetrack_tracker",
+    "AlphaPoseTracker",
+    "build_alphapose_tracker",
+]

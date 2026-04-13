@@ -1,9 +1,15 @@
 # TotalCapture 快速测试版配置
 # 只用 S1 的少量数据，快速验证流程
 
-dataset: totalcapture_test
+project: totalcapture_test
 
 preprocess:
+  dataset: totalcapture
+  raw_root: /data/fzliang/totalcapture
+  camera: cam1
+  output: ./data/interim/video_manifest.csv
+
+slice:
   root: /data/fzliang/totalcapture
   out_dir: ./data/processed/totalcapture_test
   window_len: 24
@@ -12,14 +18,14 @@ preprocess:
   train_subjects: S1
   val_subjects: S1
   test_subjects: S1
-  max_sequences: 3  # 只使用3个序列，快速测试
+  max_sequences: 3
   skeleton_source: vicon
 
 model:
-  motionbert_root: /home/fzliang/origin/MotionBERT
+  motionbert_root: /home/fzliang/MotionBERT
   motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
   motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-  imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth
+  imu_ckpt: /home/fzliang/despite/totalcapture/checkpoints/si_totalcapture_best.pth
 
 paths:
   data_root: ./data/processed/totalcapture_test

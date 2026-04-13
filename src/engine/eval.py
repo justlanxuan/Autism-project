@@ -4,22 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
 
 from src.datasets.alignment_dataset import WindowAlignmentDataset
-from src.modules.matchers import (
-    IMUEncoder,
-    IMUVideoMatcher,
-    VideoEncoder,
-    SymmetricInfoNCE,
-    retrieval_top1,
-    build_motionbert_backbone,
-    load_motionbert_checkpoint,
-)
+from src.engine.common import build_alignment_model, build_loss_fn
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,37 +45,11 @@ def main() -> None:
     )
     loader = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
-    motionbert_root = Path(args.motionbert_root).expanduser().resolve()
-    if str(motionbert_root) not in sys.path:
-        sys.path.insert(0, str(motionbert_root))
-
-    # Models already imported from src.modules.matchers
-
-    config_path = Path(args.motionbert_config)
-    if not config_path.is_absolute():
-        config_path = motionbert_root / config_path
-
-    ckpt_path = Path(args.motionbert_ckpt) if args.motionbert_ckpt else None
-    if ckpt_path is not None and not ckpt_path.is_absolute():
-        ckpt_path = motionbert_root / ckpt_path
-
-    backbone, _ = build_motionbert_backbone(str(config_path))
-    if not args.skip_motionbert_ckpt:
-        if ckpt_path is None:
-            raise ValueError("--motionbert_ckpt is required unless --skip_motionbert_ckpt is set.")
-        load_motionbert_checkpoint(backbone, str(ckpt_path), strict=True)
-    else:
-        print("[WARN] skip_motionbert_ckpt enabled: using randomly initialized MotionBERT backbone.")
-
-    model = IMUVideoMatcher(
-        imu_encoder=IMUEncoder(input_size=48, hidden_size=512, num_layers=2, device=str(device)),
-        video_encoder=VideoEncoder(backbone=backbone, rep_dim=512, temporal_layers=2),
-    ).to(device)
-
+    model, _ = build_alignment_model(args, device)
     ckpt = torch.load(args.checkpoint, map_location="cpu")
     model.load_state_dict(ckpt["model"], strict=False)
 
-    loss_fn = SymmetricInfoNCE(temperature=args.temperature).to(device)
+    loss_fn = build_loss_fn(temperature=args.temperature, device=device)
 
     model.eval()
     total_loss = 0.0
@@ -97,7 +62,8 @@ def main() -> None:
             skeleton = batch["skeleton"].to(device)
             out = model(imu=imu, skeleton=skeleton)
             total_loss += float(loss_fn(out["imu"], out["video"]).item())
-            total_top1 += retrieval_top1(out["imu"], out["video"]) 
+            from src.modules.matchers import retrieval_top1
+            total_top1 += retrieval_top1(out["imu"], out["video"])
             n += 1
 
     metrics = {
