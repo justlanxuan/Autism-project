@@ -1,7 +1,7 @@
-# TotalCapture 视频流程配置
-# 从视频中提取骨架（AlphaPose + ByteTrack）
+# TotalCapture video workflow quick test
+# Small sample (1 video, S1 only, 2 epochs)
 
-project: totalcapture_video
+project: totalcapture_video_test
 
 preprocess:
   dataset: totalcapture
@@ -26,7 +26,7 @@ extract:
 slice:
   root: /data/fzliang/totalcapture
   skeleton_source: alphapose
-  skeleton_root: ./data/interim/video_skeleton_outputs
+  skeleton_root: ./data/interim/video_skeleton_outputs # /home/fzliang/MotionBERT/results_totalcapture_video
   out_dir: ./data/processed/totalcapture_video
   window_len: 24
   stride: 16
@@ -40,18 +40,18 @@ model:
   motionbert_root: /home/fzliang/origin/MotionBERT
   motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
   motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-  imu_ckpt: ""
+  imu_ckpt: "/home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth"
 
 paths:
-  data_root: ./data/processed/totalcapture_video
-  train_csv: ./data/processed/totalcapture_video/windows_train.csv
-  val_csv: ./data/processed/totalcapture_video/windows_train.csv
-  test_csv: ./data/processed/totalcapture_video/windows_train.csv
+  data_root: ./data/processed/totalcapture_video_test
+  train_csv: ./data/processed/totalcapture_video_test/windows_train.csv
+  val_csv: ./data/processed/totalcapture_video_test/windows_train.csv
+  test_csv: ./data/processed/totalcapture_video_test/windows_train.csv
 
 output:
   output_root: ./artifacts
   save_dir: .
-  run_name: totalcapture_video
+  run_name: totalcapture_video_test
 
 train:
   epochs: 2
