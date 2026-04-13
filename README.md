@@ -65,7 +65,6 @@ python -m src.data.preprocess.preprocess_totalcapture \
 
 The unified pipeline supports four stages: `extract` (video skeleton), `slice` (IMU-skeleton slicing into windows), `train`, `test`.
 
-> **Note on `extract`:** The extractor is **not hard-coded to AlphaPose or ByteTrack**. You configure `extract.tracker` and `extract.pose_estimator` independently, and all keys under `extract` are passed through automatically as CLI arguments to `run_extract.py`. This means you can swap detector / tracker / pose-estimator in the future without modifying pipeline code.
 
 ```bash
 # Run everything
