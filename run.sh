@@ -5,7 +5,7 @@ set -e
 
 export PYTHONPATH="${PWD}:${PWD}/src"
 
-CONFIG="${1:-configs/totalcapture_test.yaml}"
+CONFIG="${1:-configs/totalcapture_vicon_test.yaml}"
 STAGE="${2:-all}"
 
 echo "Config: $CONFIG"

@@ -9,7 +9,7 @@ Example:
 
     # From config file
     python -m src.data.preprocess.preprocess_totalcapture \
-        --config configs/test_refact.yaml
+        --config configs/totalcapture_video_test_refact.yaml
 """
 
 from __future__ import annotations

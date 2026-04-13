@@ -36,7 +36,7 @@ Make sure the following checkpoints are available before running the pipeline:
 
 ### 3. Preprocess
 
-If you are using a **video-based workflow** (e.g. `configs/test_refact.yaml`), generate the video manifest first. The preprocess parameters are defined in the `preprocess` section of your config:
+If you are using a **video-based workflow** (e.g. `configs/totalcapture_video_test_refact.yaml`), generate the video manifest first. The preprocess parameters are defined in the `preprocess` section of your config:
 
 ```yaml
 preprocess:
@@ -49,7 +49,7 @@ preprocess:
 Run it directly from the config:
 
 ```bash
-python -m src.data.preprocess.preprocess_totalcapture --config configs/test_refact.yaml
+python -m src.data.preprocess.preprocess_totalcapture --config configs/totalcapture_video_test_refact.yaml
 ```
 
 Or run manually with CLI overrides:
@@ -68,13 +68,13 @@ The unified pipeline supports four stages: `extract` (video skeleton), `slice` (
 
 ```bash
 # Run everything
-./run.sh configs/test_refact.yaml all
+./run.sh configs/totalcapture_video_test_refact.yaml all
 
 # Or run individual stages
-./run.sh configs/test_refact.yaml extract      # video -> skeleton (for video workflows)
-./run.sh configs/test_refact.yaml slice        # IMU + skeleton -> npz + csv
-./run.sh configs/test_refact.yaml train        # train matcher
-./run.sh configs/test_refact.yaml test         # evaluate matcher
+./run.sh configs/totalcapture_video_test_refact.yaml extract      # video -> skeleton (for video workflows)
+./run.sh configs/totalcapture_video_test_refact.yaml slice        # IMU + skeleton -> npz + csv
+./run.sh configs/totalcapture_video_test_refact.yaml train        # train matcher
+./run.sh configs/totalcapture_video_test_refact.yaml test         # evaluate matcher
 ```
 
 > **Note:** The default stage order for `all` is `extract -> slice -> train -> test`. For Vicon-based configs (no `extract` section), the extract stage is automatically skipped.
@@ -82,8 +82,8 @@ The unified pipeline supports four stages: `extract` (video skeleton), `slice` (
 You can also call the Python CLI directly:
 
 ```bash
-python -m src.cli.run_pipeline --config configs/test_refact.yaml --stages all
-python -m src.cli.run_pipeline --config configs/test_refact.yaml --stages extract,slice
+python -m src.cli.run_pipeline --config configs/totalcapture_video_test_refact.yaml --stages all
+python -m src.cli.run_pipeline --config configs/totalcapture_video_test_refact.yaml --stages extract,slice
 ```
 
 ---
@@ -92,10 +92,10 @@ python -m src.cli.run_pipeline --config configs/test_refact.yaml --stages extrac
 
 | Config | Description |
 |--------|-------------|
-| `configs/totalcapture_test.yaml` | Quick Vicon test: S1 only, 2 epochs |
-| `configs/totalcapture.yaml` | Full Vicon training: S1-S5, 50 epochs |
-| `configs/totalcapture_video.yaml` | Video workflow: AlphaPose + ByteTrack -> train |
-| `configs/test_refact.yaml` | **Refactored end-to-end test** (video workflow, 1 video, 2 epochs) |
+| `configs/totalcapture_vicon_test.yaml` | Quick Vicon test: S1 only, 2 epochs |
+| `configs/totalcapture_vicon.yaml` | Full Vicon training: S1-S5, 50 epochs |
+| `configs/totalcapture_video_test.yaml` | Video workflow: AlphaPose + ByteTrack -> train |
+| `configs/totalcapture_video_test_refact.yaml` | **Refactored end-to-end test** (video workflow, 1 video, 2 epochs) |
 | `configs/custom.yaml` | Custom 4-fold cross-validation |
 
 ---
@@ -189,11 +189,11 @@ Autism-project/
 
 ### Step 1: Preprocess (Video manifest generation)
 
-For **video-based workflows** (e.g. `configs/test_refact.yaml` or `configs/totalcapture_video.yaml`), you first need to generate a `video_manifest.csv` that lists all videos to be processed. This is a one-time preprocessing step.
+For **video-based workflows** (e.g. `configs/totalcapture_video_test_refact.yaml` or `configs/totalcapture_video_test.yaml`), you first need to generate a `video_manifest.csv` that lists all videos to be processed. This is a one-time preprocessing step.
 
 ```bash
 # Generate manifest from config
-python -m src.data.preprocess.preprocess_totalcapture --config configs/test_refact.yaml
+python -m src.data.preprocess.preprocess_totalcapture --config configs/totalcapture_video_test_refact.yaml
 
 # Or specify manually
 python -m src.data.preprocess.preprocess_totalcapture \
@@ -208,7 +208,7 @@ python -m src.data.preprocess.preprocess_totalcapture \
     --output ./data/interim/video_manifest_all.csv
 ```
 
-> **Note:** For Vicon-based configs (e.g. `configs/totalcapture_test.yaml`), this step is **not needed** because skeleton data already exists as ground-truth motion capture.
+> **Note:** For Vicon-based configs (e.g. `configs/totalcapture_vicon_test.yaml`), this step is **not needed** because skeleton data already exists as ground-truth motion capture.
 
 ---
 
@@ -223,10 +223,10 @@ The `slice` stage turns raw IMU + skeleton data into windowed training examples.
 
 ```bash
 # As part of the full pipeline
-./run.sh configs/totalcapture_test.yaml all
+./run.sh configs/totalcapture_vicon_test.yaml all
 
 # Or run only the slice stage
-./run.sh configs/totalcapture_test.yaml slice
+./run.sh configs/totalcapture_vicon_test.yaml slice
 ```
 
 Under the hood this executes `src.datasets.totalcapture.TotalCaptureAdapter` (or `src.data.slice.custom_4fold` for custom configs).
@@ -302,17 +302,17 @@ slice:
 
 Uses high-precision motion capture data. **Faster and more accurate.**
 
-Example: `configs/totalcapture_test.yaml`
+Example: `configs/totalcapture_vicon_test.yaml`
 
 ```bash
-./run.sh configs/totalcapture_test.yaml all
+./run.sh configs/totalcapture_vicon_test.yaml all
 ```
 
 ### Video Skeleton Extraction
 
 Extracts skeleton from videos using the detector / tracker / pose-estimator combination specified in your config.
 
-Example: `configs/test_refact.yaml`
+Example: `configs/totalcapture_video_test_refact.yaml`
 
 ```yaml
 extract:
@@ -331,7 +331,7 @@ extract:
 ```
 
 ```bash
-./run.sh configs/test_refact.yaml all
+./run.sh configs/totalcapture_video_test_refact.yaml all
 ```
 
 The pipeline will:
@@ -346,6 +346,6 @@ The pipeline will:
 ## Notes
 
 - First run computes IMU statistics and saves to `imu_stats.json` for reuse.
-- Use `configs/totalcapture_test.yaml` or `configs/test_refact.yaml` for quick testing (~5 minutes).
-- Use `configs/totalcapture.yaml` for full training (~2 hours).
+- Use `configs/totalcapture_vicon_test.yaml` or `configs/totalcapture_video_test_refact.yaml` for quick testing (~5 minutes).
+- Use `configs/totalcapture_vicon.yaml` for full training (~2 hours).
 - Video extraction is slow (~5-10 min per video) but only needed once; intermediate results are cached under `data/interim/`.
