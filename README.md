@@ -112,8 +112,8 @@ The unified pipeline supports four stages: `extract` (video skeleton), `slice` (
 You can also call the Python CLI directly:
 
 ```bash
-python -m src.cli.run_pipeline --config configs/totalcapture_video_test.yaml --stages all
-python -m src.cli.run_pipeline --config configs/totalcapture_video_test.yaml --stages extract,slice
+python -m src.pipelines --config configs/totalcapture_video_test.yaml --stages all
+python -m src.pipelines --config configs/totalcapture_video_test.yaml --stages extract,slice
 ```
 
 ---
@@ -136,15 +136,15 @@ python -m src.cli.run_pipeline --config configs/totalcapture_video_test.yaml --s
 Autism-project/
 ├── configs/                      # YAML configuration files
 ├── src/
-│   ├── cli/                      # Command-line entrypoints
-│   │   ├── run_pipeline.py       # Unified pipeline driver
-│   │   ├── run_extract.py        # Unified skeleton extraction dispatcher
-│   │   └── run_alphapose_bytetrack.py  # Backend implementation: AlphaPose + ByteTrack
-│   │
-│   ├── pipelines/                # High-level workflow orchestration
+│   ├── pipelines/                # High-level workflow orchestration + CLI entry
+│   │   ├── __main__.py           # Unified pipeline driver (`python -m src.pipelines`)
 │   │   ├── base.py               # PipelineStage base class
 │   │   ├── stages.py             # Extract / Slice / Train / Test stages
-│   │   └── full_pipeline.py      # Compose and run stages
+│   │   ├── full_pipeline.py      # Compose and run stages
+│   │   └── video_pipeline/       # Skeleton extraction backends (sub-orchestrators)
+│   │       ├── dispatcher.py     # Route to extractor backend by tracker/estimator
+│   │       └── backends/
+│   │           └── alphapose_bytetrack.py
 │   │
 │   ├── engine/                   # Training & evaluation engines
 │   │   ├── common.py             # Shared model-building utilities
@@ -344,20 +344,70 @@ Extracts skeleton from videos using the detector / tracker / pose-estimator comb
 Example: `configs/totalcapture_video_test.yaml`
 
 ```yaml
+project: totalcapture_video_test
+
+preprocess:
+  dataset: totalcapture
+  raw_root: /data/fzliang/totalcapture
+  camera: cam1
+
 extract:
+  detector: bytetrack              # or "alphapose"
   tracker: bytetrack               # or "alphapose"
-  pose_estimator: alphapose
+  pose_estimator: alphapose        # or "wham"
   manifest_csv: ./data/interim/video_manifest.csv
-  results_root: ./data/interim/totalcapture_video_test_skeletons
+  limit: 1
   skip_existing: true
   gpu: 0
-  # Generic checkpoint / root / cfg keys (not hard-coded to specific model names)
-  tracker_root: ./third-party/ByteTrack
-  tracker_ckpt: /home/fzliang/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar
-  pose_estimator_root: ./third-party/AlphaPose
-  pose_estimator_cfg: configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml
-  pose_estimator_ckpt: pretrained_models/fast_res50_256x192.pth
+  merge_tracklets:
+    enabled: false
+    max_gap: 10000000
+    score_thresh: 2.2
+    max_norm_dist: 2.8
+    max_size_diff: 1.8
+    fill_gaps: false
+    known_num_people: 1
+
+slice:
+  root: /data/fzliang/totalcapture
+  window_len: 24
+  stride: 16
+  sensor_order: [L_LowLeg, R_LowLeg, L_LowArm, R_LowArm]
+  train_subjects: S1
+  val_subjects: S1
+  test_subjects: S1
+  max_sequences: 1
+  # skeleton_source and skeleton_root are auto-derived from extract settings
+
+train:
+  model:
+    motionbert_root: /home/fzliang/origin/MotionBERT
+    motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
+    motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
+    imu_ckpt: /home/fzliang/despite/pretrained_models/v2/SIE_v2.pth
+  epochs: 2
+  batch_size: 32
+  num_workers: 4
+  compute_imu_stats: true
+  imu_sensor: R_LowArm
+  repeat_single_sensor: 4
+
+test:
+  batch_size: 32
 ```
+
+> **Auto-derived paths:** The pipeline automatically creates a timestamped
+> `work_dir` (e.g. `./work/totalcapture_video_test_20240415_143022/`) and derives
+> all stage I/O folders from it:
+> - `extract` outputs → `{work_dir}/extract`
+> - `slice` outputs → `{work_dir}/slice`
+> - `train` outputs → `{work_dir}/train`
+> - `paths.data_root`, `train_csv`, `val_csv`, `test_csv` are inferred automatically.
+> You only need to override them if you want non-standard locations.
+
+> **Config fragments:** per-component defaults are loaded automatically from
+> `configs/trackers/{name}.yaml` and `configs/pose_estimators/{name}.yaml`.
+> You only need to list keys in the workflow YAML when you want to override them.
 
 ```bash
 ./run.sh configs/totalcapture_video_test.yaml all
@@ -377,4 +427,4 @@ The pipeline will:
 - First run computes IMU statistics and saves to `imu_stats.json` for reuse.
 - Use `configs/totalcapture_vicon_test.yaml` or `configs/totalcapture_video_test.yaml` for quick testing (~5 minutes).
 - Use `configs/totalcapture_vicon.yaml` or `configs/totalcapture_video.yaml` for full training (~2 hours).
-- Video extraction is slow (~5-10 min per video) but only needed once; intermediate results are cached under `data/interim/`.
+- Video extraction is slow (~5-10 min per video) but only needed once; use `skip_existing: true` to skip already-extracted videos within the same run.

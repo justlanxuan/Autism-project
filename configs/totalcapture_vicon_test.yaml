@@ -1,5 +1,5 @@
-# TotalCapture 快速测试版配置
-# 只用 S1 的少量数据，快速验证流程
+# TotalCapture quick test using Vicon GT
+# S1 only, 2 epochs
 
 project: totalcapture_test
 
@@ -11,7 +11,6 @@ preprocess:
 
 slice:
   root: /data/fzliang/totalcapture
-  out_dir: ./data/processed/totalcapture_test
   window_len: 24
   stride: 16
   sensor_order: [L_LowLeg, R_LowLeg, L_LowArm, R_LowArm]
@@ -19,26 +18,13 @@ slice:
   val_subjects: S1
   test_subjects: S1
   max_sequences: 3
-  skeleton_source: vicon
-
-model:
-  motionbert_root: /home/fzliang/MotionBERT
-  motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
-  motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-  imu_ckpt: /home/fzliang/despite/totalcapture/checkpoints/si_totalcapture_best.pth
-
-paths:
-  data_root: ./data/processed/totalcapture_test
-  train_csv: ./data/processed/totalcapture_test/windows_train.csv
-  val_csv: ./data/processed/totalcapture_test/windows_train.csv
-  test_csv: ./data/processed/totalcapture_test/windows_train.csv
-
-output:
-  output_root: ./artifacts
-  save_dir: .
-  run_name: totalcapture_test
 
 train:
+  model:
+    motionbert_root: /home/fzliang/MotionBERT
+    motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
+    motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
+    imu_ckpt: /home/fzliang/despite/totalcapture/checkpoints/si_totalcapture_best.pth
   epochs: 2
   batch_size: 32
   num_workers: 4
@@ -48,11 +34,10 @@ train:
 
 test:
   batch_size: 32
-
-grouped_test:
-  enabled: true
-  group_sizes: "2,4"
-  num_trials: 5
-  chunk_windows: 30
-  min_chunk_windows: 15
-  seed: 42
+  grouped_test:
+    enabled: true
+    group_sizes: "2,4"
+    num_trials: 5
+    chunk_windows: 30
+    min_chunk_windows: 15
+    seed: 42

@@ -11,6 +11,6 @@ STAGE="${2:-all}"
 echo "Config: $CONFIG"
 echo "Stage: $STAGE"
 
-python -m src.cli.run_pipeline --config "$CONFIG" --stages "$STAGE"
+python -m src.pipelines --config "$CONFIG" --stages "$STAGE"
 
 echo "=== Done ==="

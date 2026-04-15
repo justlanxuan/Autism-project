@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from src.utils.config import load_config
+from src.utils.config import load_config, resolve_config
 from src.datasets.custom import Custom4FoldAdapter
 
 
@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
 def load_slice_cfg(config_path: str | None) -> dict:
     if not config_path:
         return {}
-    data = load_config(config_path)
+    data = resolve_config(config_path)
     slice = data.get("slice", {})
     if slice is None:
         return {}

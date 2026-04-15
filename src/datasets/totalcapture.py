@@ -244,10 +244,15 @@ class TotalCaptureAdapter:
         window_rows: List[Dict[str, object]] = []
 
         for subject, session, vicon_path, imu_path in all_seqs:
-            try:
-                split = subject_to_split(subject, self.train_subj, self.val_subj, self.test_subj)
-            except ValueError as e:
-                print(f"Warning: {e}, skipping {subject}_{session}...")
+            splits = []
+            if subject in self.train_subj:
+                splits.append("train")
+            if subject in self.val_subj:
+                splits.append("val")
+            if subject in self.test_subj:
+                splits.append("test")
+            if not splits:
+                print(f"Warning: Subject {subject} not assigned to any split, skipping {subject}_{session}...")
                 continue
 
             quat4, acc3 = parse_xsens_sensors(imu_path, self.sensor_order)
@@ -277,7 +282,7 @@ class TotalCaptureAdapter:
                 {
                     "subject": subject,
                     "session": session,
-                    "split": split,
+                    "split": ",".join(splits),
                     "npz_path": str(rel_npz),
                     "num_frames": int(tlen),
                 }
@@ -286,17 +291,18 @@ class TotalCaptureAdapter:
             if tlen >= self.window_len:
                 for st in range(0, tlen - self.window_len + 1, self.stride):
                     ed = st + self.window_len
-                    window_rows.append(
-                        {
-                            "subject": subject,
-                            "session": session,
-                            "split": split,
-                            "npz_path": str(rel_npz),
-                            "window_start": int(st),
-                            "window_end": int(ed),
-                            "window_len": int(self.window_len),
-                        }
-                    )
+                    for split in splits:
+                        window_rows.append(
+                            {
+                                "subject": subject,
+                                "session": session,
+                                "split": split,
+                                "npz_path": str(rel_npz),
+                                "window_start": int(st),
+                                "window_end": int(ed),
+                                "window_len": int(self.window_len),
+                            }
+                        )
 
         write_csv(
             self.out_dir / "sequences.csv",

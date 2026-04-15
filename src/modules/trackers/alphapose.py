@@ -1,6 +1,6 @@
 """AlphaPose tracker adapter for Autism-project.
 
-This wraps AlphaPose's original tracker implementation without modifying the
+Wraps AlphaPose's original tracker implementation without modifying the
 AlphaPose source tree.
 """
 
@@ -11,7 +11,13 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+from src.core.registry import TRACKERS
+from src.data.structures import Detection, Track
+from src.modules.trackers.base import BaseTracker
 
 
 @dataclass
@@ -19,19 +25,25 @@ class AlphaPoseTrackerConfig:
     repo_root: str = "/home/fzliang/origin/AlphaPose"
     expected_commit: Optional[str] = None
     strict_commit: bool = False
-    # Optional override for AlphaPose tracker options.
     tracker_cfg: Optional[Any] = None
     device: str = "cuda:0"
     gpus: Optional[list[int]] = None
 
 
-class AlphaPoseTracker:
+@TRACKERS.register("alphapose")
+class AlphaPoseTracker(BaseTracker):
+    """In-process AlphaPose tracker (for future decoupled usage)."""
+
     def __init__(self, config: Optional[AlphaPoseTrackerConfig] = None):
         self.config = config or AlphaPoseTrackerConfig()
         self.repo_path = self._resolve_repo_path(self.config.repo_root)
+        self._tracker = None
+
+    def _lazy_init(self) -> None:
+        if self._tracker is not None:
+            return
         self._validate_commit(self.repo_path)
         self._ensure_import_path(self.repo_path)
-
         from trackers.tracker_api import Tracker
         from trackers.tracker_cfg import cfg as tcfg
 
@@ -78,21 +90,18 @@ class AlphaPoseTracker:
 
     def reset(self) -> None:
         """AlphaPose's original tracker is sequence-local; rebuild it by re-init."""
-        from trackers.tracker_api import Tracker
-        from trackers.tracker_cfg import cfg as tcfg
+        self._tracker = None
 
-        tracker_cfg = self.config.tracker_cfg or tcfg
-        runtime_args = SimpleNamespace(
-            device=self.config.device,
-            gpus=self.config.gpus or ([0] if self.config.device.startswith("cuda") else [-1]),
-        )
-        self._tracker = Tracker(tracker_cfg, runtime_args)
+    def update(self, detections: List[Detection], frame: np.ndarray) -> List[Track]:
+        """Update tracker state with detections.
 
-    def update(self, *args: Any, **kwargs: Any):
-        return self._tracker.update(*args, **kwargs)
-
-
-def build_alphapose_tracker(config_dict: Optional[Dict[str, Any]] = None) -> AlphaPoseTracker:
-    if config_dict is None:
-        return AlphaPoseTracker()
-    return AlphaPoseTracker(AlphaPoseTrackerConfig(**config_dict))
+        Note: AlphaPose tracker expects a specific internal format;
+        this method is a shim for future decoupled usage.
+        """
+        self._lazy_init()
+        # AlphaPose tracker update signature differs from our generic interface.
+        # For now, delegate directly; users needing full control should use
+        # AlphaPoseFullEstimator subprocess path.
+        raw = self._tracker.update(detections, frame)
+        # Normalize to Track structures if possible
+        return raw

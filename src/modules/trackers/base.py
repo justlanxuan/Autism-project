@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import List
+
+import numpy as np
+
+from src.data.structures import Detection, Track
 
 
 class BaseTracker(ABC):
@@ -12,7 +16,17 @@ class BaseTracker(ABC):
     @abstractmethod
     def reset(self) -> None:
         """Reset internal tracking state."""
+        raise NotImplementedError
 
     @abstractmethod
-    def update(self, *args: Any, **kwargs: Any):
-        """Update tracker state and return backend-specific results."""
+    def update(self, detections: List[Detection], frame: np.ndarray) -> List[Track]:
+        """Update tracker state with new detections.
+
+        Args:
+            detections: List of Detection objects for the current frame.
+            frame: Input image in HWC format (may be used for appearance features).
+
+        Returns:
+            List of Track objects with assigned track_ids.
+        """
+        raise NotImplementedError

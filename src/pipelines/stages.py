@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from src.pipelines.base import PipelineStage
-from src.utils.config import load_config
+from src.utils.config import load_config, resolve_config
 
 
 def _append_arg(cmd: list[str], key: str, value) -> None:
@@ -48,7 +48,7 @@ class SliceStage(PipelineStage):
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         config_path = state["config_path"]
-        cfg = load_config(config_path)
+        cfg = resolve_config(config_path)
         preprocess_cfg = cfg.get("preprocess", {})
         dataset = preprocess_cfg.get("dataset", "")
 
@@ -75,19 +75,14 @@ class ExtractStage(PipelineStage):
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         config_path = state["config_path"]
-        cfg = load_config(config_path)
+        cfg = resolve_config(config_path)
         extract_cfg = cfg.get("extract")
         if not isinstance(extract_cfg, dict):
             print("[INFO] No extract section in config; skipping extraction stage.")
             return state
 
-        script_path = (_repo_root() / "src" / "cli" / "run_extract.py").resolve()
-        cmd = [sys.executable, str(script_path)]
-
-        # Automatically translate every config key into a CLI flag.
-        # This keeps the stage generic and avoids hard-coding detector/tracker/pose-estimator names.
-        for key, value in extract_cfg.items():
-            _append_arg(cmd, f"--{key}", value)
+        script_path = (_repo_root() / "src" / "pipelines" / "video_pipeline" / "dispatcher.py").resolve()
+        cmd = [sys.executable, str(script_path), "--config", str(config_path)]
 
         _run(cmd)
         return state
@@ -98,11 +93,12 @@ class TrainStage(PipelineStage):
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         config_path = state["config_path"]
-        cfg = load_config(config_path)
-        model = cfg.get("model", {})
+        cfg = resolve_config(config_path)
+        train_cfg = cfg.get("train", {})
+        model = train_cfg.get("model", {})
         paths = cfg.get("paths", {})
-        out = cfg.get("output", {})
-        train = cfg.get("train", {})
+        out = train_cfg.get("output", {})
+        train = train_cfg
         folds = cfg.get("folds")
 
         if isinstance(folds, list) and folds:
@@ -116,10 +112,11 @@ class TrainStage(PipelineStage):
         return state
 
     def _run_train(self, config_path: Path, cfg: dict) -> None:
-        model = cfg.get("model", {})
+        train_cfg = cfg.get("train", {})
+        model = train_cfg.get("model", {})
         paths = cfg.get("paths", {})
-        out = cfg.get("output", {})
-        train = cfg.get("train", {})
+        out = train_cfg.get("output", {})
+        train = train_cfg
 
         cmd = [
             sys.executable,
@@ -155,12 +152,13 @@ class TestStage(PipelineStage):
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         config_path = state["config_path"]
-        cfg = load_config(config_path)
-        model = cfg.get("model", {})
+        cfg = resolve_config(config_path)
+        train_cfg = cfg.get("train", {})
+        model = train_cfg.get("model", {})
         paths = cfg.get("paths", {})
         test = cfg.get("test", {})
-        grouped = cfg.get("grouped_test", {})
-        out = cfg.get("output", {})
+        grouped = test.get("grouped_test", {})
+        out = train_cfg.get("output", {})
         folds = cfg.get("folds")
 
         run_dir = _run_dir(cfg)
@@ -233,7 +231,7 @@ class TestStage(PipelineStage):
 
 
 def _run_dir(cfg: dict) -> Path:
-    out = cfg.get("output", {})
+    out = cfg.get("train", {}).get("output", {})
     return (_repo_root() / out.get("output_root", "artifacts") / out.get("save_dir", ".") / out.get("run_name", "")).resolve()
 
 

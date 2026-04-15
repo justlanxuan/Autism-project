@@ -1,32 +1,21 @@
-# 自定义数据集配置（4-fold 交叉验证）
-# 适用于 2-person matching 场景
+# Custom dataset config (4-fold cross-validation)
+# For 2-person matching scenario
 
 project: custom
 
 preprocess:
   dataset: custom
 
-# 4-fold 交叉验证
 folds: [1, 2, 3, 4]
 
-model:
-  motionbert_root: /home/fzliang/origin/MotionBERT
-  motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
-  motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-  imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth
-
-paths:
-  data_root: ./data/processed/custom
-  train_csv: ./data/processed/custom/folds/fold_{fold}/windows_train.csv
-  val_csv: ./data/processed/custom/folds/fold_{fold}/windows_val.csv
-  test_csv: ./data/processed/custom/folds/fold_{fold}/windows_test.csv
-
-output:
-  output_root: ./artifacts
-  save_dir: .
-  run_name: custom_fold{fold}
-
 train:
+  model:
+    motionbert_root: /home/fzliang/origin/MotionBERT
+    motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
+    motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
+    imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth
+  output:
+    run_name: custom_fold{fold}
   epochs: 150
   batch_size: 64
   num_workers: 8
@@ -39,3 +28,9 @@ test:
   mode: custom_2person
   eval_mode: same_time_2person
   chunk_windows: 30
+
+paths:
+  data_root: ./data/processed/custom
+  train_csv: ./data/processed/custom/folds/fold_{fold}/windows_train.csv
+  val_csv: ./data/processed/custom/folds/fold_{fold}/windows_val.csv
+  test_csv: ./data/processed/custom/folds/fold_{fold}/windows_test.csv

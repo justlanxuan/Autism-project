@@ -61,20 +61,26 @@ class CandidateEdge:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Merge fragmented AlphaPose IDs and re-export global embeddings."
+        description="Merge fragmented AlphaPose IDs and re-export global IDs."
     )
     parser.add_argument("--json_path", type=str, required=True, help="AlphaPose results JSON path")
     parser.add_argument(
         "--embedding_dir",
         type=str,
-        required=True,
-        help="Directory containing person_<id>_representation.npy",
+        default=None,
+        help="Directory containing person_<id>_representation.npy (for MotionBERT mode)",
     )
     parser.add_argument(
         "--output_dir",
         type=str,
         default="merged_embeddings",
         help="Output directory for merged embeddings and mapping files",
+    )
+    parser.add_argument(
+        "--output_json",
+        type=str,
+        default=None,
+        help="Output path for merged AlphaPose JSON (for Autism-project mode)",
     )
 
     parser.add_argument("--tail_window", type=int, default=8, help="Tail window length for stats")
@@ -126,7 +132,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dry_run",
         action="store_true",
-        help="Only compute mapping; do not export merged embeddings",
+        help="Only compute mapping; do not export",
     )
     return parser.parse_args()
 
@@ -431,6 +437,57 @@ def export_embeddings(
     return mapping
 
 
+def export_merged_json(
+    json_path: str,
+    merged_groups: Dict[int, Set[int]],
+    output_json_path: str,
+):
+    """Rewrite AlphaPose JSON with merged global IDs."""
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    # Build old_id -> global_id mapping
+    old_to_global = {}
+    for global_id, members in enumerate(sorted(merged_groups.values(), key=lambda x: sorted(list(x)))):
+        for old_id in members:
+            old_to_global[int(old_id)] = global_id
+
+    def rewrite_item(item):
+        if isinstance(item, dict):
+            raw_idx = item.get("idx", -1)
+            pid = parse_person_id(raw_idx)
+            new_pid = old_to_global.get(pid, pid)
+            item = dict(item)
+            item["idx"] = new_pid
+        return item
+
+    if isinstance(data, list):
+        out = []
+        for item in data:
+            if isinstance(item, dict) and "result" in item and isinstance(item["result"], list):
+                new_item = dict(item)
+                new_item["result"] = [rewrite_item(sub) for sub in item["result"]]
+                out.append(new_item)
+            else:
+                out.append(rewrite_item(item))
+    else:
+        out = rewrite_item(data)
+
+    output_json = Path(output_json_path)
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+    with output_json.open("w") as f:
+        json.dump(out, f, indent=2)
+
+    mapping = {global_id: sorted([int(x) for x in members]) for global_id, members in enumerate(sorted(merged_groups.values(), key=lambda x: sorted(list(x))))}
+    map_path = output_json.parent / (output_json.stem + "_id_mapping.json")
+    with map_path.open("w") as f:
+        json.dump(mapping, f, indent=2)
+
+    print(f"Exported merged JSON: {output_json}")
+    print(f"Exported ID mapping: {map_path}")
+    return mapping
+
+
 def main():
     args = parse_args()
     records = load_json_records(args.json_path)
@@ -459,12 +516,17 @@ def main():
         print("Merged groups:", merged_groups)
         return
 
-    export_embeddings(
-        embedding_dir=args.embedding_dir,
-        output_dir=args.output_dir,
-        merged_groups=merged_groups,
-        fill_gaps=args.fill_gaps,
-    )
+    if args.output_json:
+        export_merged_json(args.json_path, merged_groups, args.output_json)
+    else:
+        if not args.embedding_dir:
+            raise ValueError("--embedding_dir is required when --output_json is not set")
+        export_embeddings(
+            embedding_dir=args.embedding_dir,
+            output_dir=args.output_dir,
+            merged_groups=merged_groups,
+            fill_gaps=args.fill_gaps,
+        )
 
 
 if __name__ == "__main__":

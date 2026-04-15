@@ -10,24 +10,24 @@ preprocess:
   output: ./data/interim/video_manifest.csv
 
 extract:
+  detector: bytetrack
   tracker: bytetrack
   pose_estimator: alphapose
   manifest_csv: ./data/interim/video_manifest.csv
-  limit: 0 # 0 for all
-  results_root: ./data/interim/totalcapture_video_skeletons
+  limit: 0
   skip_existing: true
   gpu: 0
-  tracker_root: ./third-party/ByteTrack
-  tracker_ckpt: /home/fzliang/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar
-  pose_estimator_root: ./third-party/AlphaPose
-  pose_estimator_cfg: configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml
-  pose_estimator_ckpt: ./third-party/AlphaPose/pretrained_models/fast_res50_256x192.pth
+  merge_tracklets:
+    enabled: false
+    max_gap: 10000000
+    score_thresh: 2.2
+    max_norm_dist: 2.8
+    max_size_diff: 1.8
+    fill_gaps: false
+    known_num_people: 1
 
 slice:
   root: /data/fzliang/totalcapture
-  skeleton_source: alphapose
-  skeleton_root: ./data/interim/totalcapture_video_skeletons
-  out_dir: ./data/processed/totalcapture_video
   window_len: 24
   stride: 16
   sensor_order: [L_LowLeg, R_LowLeg, L_LowArm, R_LowArm]
@@ -36,24 +36,12 @@ slice:
   test_subjects: S5
   max_sequences: 0
 
-model:
-  motionbert_root: /home/fzliang/origin/MotionBERT
-  motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
-  motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-  imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth
-
-paths:
-  data_root: ./data/processed/totalcapture_video
-  train_csv: ./data/processed/totalcapture_video/windows_train.csv
-  val_csv: ./data/processed/totalcapture_video/windows_val.csv
-  test_csv: ./data/processed/totalcapture_video/windows_test.csv
-
-output:
-  output_root: ./artifacts
-  save_dir: .
-  run_name: totalcapture_video
-
 train:
+  model:
+    motionbert_root: /home/fzliang/origin/MotionBERT
+    motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
+    motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
+    imu_ckpt: /home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth
   epochs: 50
   batch_size: 64
   num_workers: 8
@@ -63,11 +51,10 @@ train:
 
 test:
   batch_size: 64
-
-grouped_test:
-  enabled: true
-  group_sizes: "2,4,6,8,16"
-  num_trials: 50
-  chunk_windows: 30
-  min_chunk_windows: 15
-  seed: 42
+  grouped_test:
+    enabled: true
+    group_sizes: "2,4,6,8,16"
+    num_trials: 50
+    chunk_windows: 30
+    min_chunk_windows: 15
+    seed: 42

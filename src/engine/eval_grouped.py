@@ -220,7 +220,8 @@ def main() -> None:
         out_csv = Path(args.save_csv)
         out_csv.parent.mkdir(parents=True, exist_ok=True)
         with out_csv.open("w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=results[0].keys())
+            fieldnames = list(dict.fromkeys(k for r in results for k in r.keys()))
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             for r in results:
                 writer.writerow(r)
