@@ -15,18 +15,18 @@ extract:
   manifest_csv: ./data/interim/video_manifest.csv
   limit: 1
   results_root: ./data/interim/video_skeleton_outputs
-  skip_existing: false
+  skip_existing: true
   gpu: 0
   tracker_root: ./third-party/ByteTrack
   tracker_ckpt: /home/fzliang/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar
   pose_estimator_root: ./third-party/AlphaPose
   pose_estimator_cfg: configs/coco/resnet/256x192_res50_lr1e-3_1x.yaml
-  pose_estimator_ckpt: ./third-party/AlphaPose/pretrained_models/fast_res50_256x192.pth
+  pose_estimator_ckpt: /home/fzliang/Autism-project/third-party/AlphaPose/pretrained_models/fast_res50_256x192.pth
 
 slice:
   root: /data/fzliang/totalcapture
   skeleton_source: alphapose
-  skeleton_root: ./data/interim/video_skeleton_outputs # /home/fzliang/MotionBERT/results_totalcapture_video
+  skeleton_root: ./data/interim/video_skeleton_outputs # exsiting skeletons: /home/fzliang/MotionBERT/results_totalcapture_video
   out_dir: ./data/processed/totalcapture_video
   window_len: 24
   stride: 16
@@ -37,10 +37,10 @@ slice:
   max_sequences: 1
 
 model:
-  motionbert_root: /home/fzliang/origin/MotionBERT
+  motionbert_root: /home/fzliang/origin/MotionBERT # your local MotionBERT repo
   motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
   motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-  imu_ckpt: "/home/fzliang/origin/despite/totalcapture/checkpoints/si_totalcapture_best.pth"
+  imu_ckpt: /home/fzliang/origin/despite/pretrained_models/v2/SIE_v2.pth # can be empty
 
 paths:
   data_root: ./data/processed/totalcapture_video_test

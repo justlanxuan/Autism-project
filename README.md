@@ -21,18 +21,48 @@ pip install numpy==1.26.0 scipy==1.11.4 pandas matplotlib opencv-python \
 ```
 
 
-### 2. Prepare Checkpoints
+### 2. Prepare External Repositories & Checkpoints
 
-Make sure the following checkpoints are available before running the pipeline:
+#### 2.1 Clone submodules (AlphaPose + ByteTrack)
 
-| Checkpoint | Default Location | Purpose |
-|------------|-------------------|---------|
-| MotionBERT | `/home/fzliang/MotionBERT/checkpoint/pretrain/MB_lite_models.bin` | Pose backbone |
-| IMU encoder | `/home/fzliang/despite/totalcapture/checkpoints/si_totalcapture_best.pth` | IMU encoder (optional) |
-| ByteTrack | `/home/fzliang/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar` | Person tracking |
-| AlphaPose | `third-party/AlphaPose/pretrained_models/fast_res50_256x192.pth` | 2D pose detection |
+This repository uses Git submodules for third-party pose estimation and tracking tools. After cloning, initialize them:
 
-> **Note:** If checkpoints are missing, models will train from random initialization (slower convergence).
+```bash
+git submodule update --init --recursive
+```
+
+Submodules configured:
+- **AlphaPose** → `third-party/AlphaPose` (`https://github.com/L-Ark/AlphaPose.git`)
+- **ByteTrack** → `third-party/ByteTrack` (`https://github.com/L-Ark/ByteTrack.git`)
+
+#### 2.2 Clone additional dependencies (MotionBERT + despite)
+
+These repositories are expected to exist as **sibling directories** next to this project (or update the paths in your config accordingly):
+
+```bash
+# In the parent directory of this repository
+git clone https://github.com/Walter0807/MotionBERT.git
+git clone https://github.com/thkreutz/despite.git
+```
+
+Expected layout:
+```
+/workspace/
+├── Autism-project/          # this repository
+├── MotionBERT/              # pose backbone
+└── despite/                 # optional IMU encoder pretraining
+```
+
+#### 2.3 Download checkpoints
+
+| Checkpoint | Expected Path | Download Source | Purpose |
+|------------|---------------|-----------------|---------|
+| **MotionBERT-Lite** | `MotionBERT/checkpoint/pretrain/MB_lite_models.bin` | [OneDrive](https://1drv.ms/f/s!AvAdh0LSjEOlgS27Ydcbpxlkl0ng?e=rq2Btn) | Pose backbone |
+| **AlphaPose** | `Autism-project/third-party/AlphaPose/pretrained_models/fast_res50_256x192.pth` | [Google Drive](https://drive.google.com/open?id=1kQhnMRURFiy7NsdS8EFL-8vtqEXOgECn) | 2D pose detection |
+| **ByteTrack** | `Autism-project/third-party/ByteTrack/pretrained/bytetrack_x_mot17.pth.tar` | [Google Drive](https://drive.google.com/file/d/1P4mY0Yyd3PPTybgZkjMYhFri88nTmJX5/view?usp=sharing) | Person tracking |
+| **IMU encoder** | `despite/pretrained_models/v2/SIE_v2.pth` | [TUDataLib](https://tudatalib.ulb.tu-darmstadt.de/items/17c47531-5e6d-4c86-a685-740d8f94f398) (download `OpenAccess_models.zip`) | DeSPITE pre-trained Skeleton+IMU encoder |
+
+> **Note:** If neither IMU checkpoint is available, the matcher will still train from random initialization.
 
 ### 3. Preprocess
 
@@ -108,13 +138,12 @@ Autism-project/
 ├── src/
 │   ├── cli/                      # Command-line entrypoints
 │   │   ├── run_pipeline.py       # Unified pipeline driver
-│   │   ├── run_extract.py              # Unified skeleton extraction dispatcher
+│   │   ├── run_extract.py        # Unified skeleton extraction dispatcher
 │   │   └── run_alphapose_bytetrack.py  # Backend implementation: AlphaPose + ByteTrack
-│   │   └── validate_custom_dataset.py
 │   │
 │   ├── pipelines/                # High-level workflow orchestration
 │   │   ├── base.py               # PipelineStage base class
-│   │   ├── stages.py             # Extract / Preprocess / Train / Test stages
+│   │   ├── stages.py             # Extract / Slice / Train / Test stages
 │   │   └── full_pipeline.py      # Compose and run stages
 │   │
 │   ├── engine/                   # Training & evaluation engines
@@ -319,7 +348,7 @@ extract:
   tracker: bytetrack               # or "alphapose"
   pose_estimator: alphapose
   manifest_csv: ./data/interim/video_manifest.csv
-  results_root: ./data/interim/test_refact_skeletons
+  results_root: ./data/interim/totalcapture_video_test_skeletons
   skip_existing: true
   gpu: 0
   # Generic checkpoint / root / cfg keys (not hard-coded to specific model names)

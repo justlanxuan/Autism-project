@@ -13,7 +13,7 @@ extract:
   tracker: bytetrack
   pose_estimator: alphapose
   manifest_csv: ./data/interim/video_manifest.csv
-  limit: 0
+  limit: 0 # 0 for all
   results_root: ./data/interim/totalcapture_video_skeletons
   skip_existing: true
   gpu: 0
