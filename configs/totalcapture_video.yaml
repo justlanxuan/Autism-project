@@ -54,7 +54,7 @@ test:
   grouped_test:
     enabled: true
     group_sizes: "2,4,6,8,16"
-    num_trials: 50
+    num_trials: 200
     chunk_windows: 30
     min_chunk_windows: 15
     seed: 42

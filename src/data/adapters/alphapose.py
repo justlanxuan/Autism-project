@@ -177,3 +177,75 @@ def find_skeleton_for_sequence(
                 return skeleton_file
 
     return None
+
+
+def _frame_num_from_image_id(image_id: str) -> int:
+    """Extract frame number from AlphaPose image_id like '0.jpg' or 'path/to/0.jpg'."""
+    stem = Path(image_id).stem
+    try:
+        return int(stem)
+    except ValueError:
+        return 0
+
+
+def load_alphapose_multiperson(skeleton_json: Path) -> tuple[dict[int, list[dict]], list[int]]:
+    """Load AlphaPose skeleton JSON supporting multiple tracks per frame.
+
+    Each detection is converted to H36M 17-joint format. Bbox is converted
+    from [x, y, w, h] (COCO) to [x1, y1, x2, y2].
+
+    Args:
+        skeleton_json: Path to AlphaPose skeleton.json
+
+    Returns:
+        frames: dict mapping frame_idx -> list of detection dicts.
+                Each dict has keys: 'track_id', 'bbox' [x1,y1,x2,y2],
+                'keypoints' [17,3], 'score'.
+        track_ids: sorted list of unique track ids across the whole sequence.
+    """
+    with open(skeleton_json) as f:
+        data = json.load(f)
+
+    frames: dict[int, list[dict]] = {}
+    track_ids_set: set[int] = set()
+
+    for entry in data:
+        image_id = entry.get("image_id", "")
+        frame_idx = _frame_num_from_image_id(image_id)
+
+        keypoints_flat = entry.get("keypoints", [])
+        if len(keypoints_flat) < 17 * 3:
+            continue
+
+        coco_kpts = np.zeros((1, 17, 3), dtype=np.float32)
+        for j in range(17):
+            coco_kpts[0, j, 0] = keypoints_flat[j * 3]
+            coco_kpts[0, j, 1] = keypoints_flat[j * 3 + 1]
+            coco_kpts[0, j, 2] = keypoints_flat[j * 3 + 2]
+
+        h36m_kpts = coco_to_h36m17(coco_kpts)[0]  # [17, 3]
+
+        # bbox from AlphaPose is usually [x, y, w, h]
+        box = entry.get("box", [0.0, 0.0, 0.0, 0.0])
+        if len(box) < 4:
+            box = [0.0, 0.0, 0.0, 0.0]
+        x, y, w, h = box
+        bbox = np.array([float(x), float(y), float(x + w), float(y + h)], dtype=np.float32)
+
+        raw_idx = entry.get("idx", 0)
+        if isinstance(raw_idx, list):
+            track_id_list = [int(x) for x in raw_idx]
+        else:
+            track_id_list = [int(raw_idx)]
+
+        for track_id in track_id_list:
+            track_ids_set.add(track_id)
+            det = {
+                "track_id": track_id,
+                "bbox": bbox,
+                "keypoints": h36m_kpts,
+                "score": float(entry.get("score", 0.0)),
+            }
+            frames.setdefault(frame_idx, []).append(det)
+
+    return frames, sorted(track_ids_set)

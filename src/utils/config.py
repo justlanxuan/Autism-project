@@ -128,14 +128,23 @@ def resolve_config(config_path: Union[str, Path]) -> Dict[str, Any]:
     # ------------------------------------------------------------------
     # 3. Auto-derive stage paths
     # ------------------------------------------------------------------
+    preprocess = cfg.get("preprocess")
+    if isinstance(preprocess, dict):
+        preprocess.setdefault("output", str(work_dir / "preprocess" / "video_manifest.csv"))
+
     # Extract stage
     if isinstance(extract, dict):
         extract.setdefault("results_root", str(work_dir / "extract"))
+        if isinstance(preprocess, dict):
+            extract.setdefault("manifest_csv", preprocess.get("output"))
 
     # Slice stage
     slice_cfg = cfg.get("slice")
     if isinstance(slice_cfg, dict):
         slice_cfg.setdefault("out_dir", str(work_dir / "slice"))
+        # Default slice root to preprocess output dir when preprocess is present
+        if isinstance(preprocess, dict):
+            slice_cfg.setdefault("root", str(work_dir / "preprocess"))
 
         # skeleton_source inherits from extract.pose_estimator, else defaults to vicon
         extract_present = isinstance(extract, dict)

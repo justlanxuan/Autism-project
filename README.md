@@ -64,36 +64,10 @@ Expected layout:
 
 > **Note:** If neither IMU checkpoint is available, the matcher will still train from random initialization.
 
-### 3. Preprocess
 
-If you are using a **video-based workflow** (e.g. `configs/totalcapture_video_test.yaml`), generate the video manifest first. The preprocess parameters are defined in the `preprocess` section of your config:
+### 3. Run the Full Pipeline
 
-```yaml
-preprocess:
-  dataset: totalcapture        # dataset type: totalcapture or custom
-  raw_root: /data/fzliang/totalcapture
-  camera: cam1
-  output: ./data/interim/video_manifest.csv
-```
-
-Run it directly from the config:
-
-```bash
-python -m src.data.preprocess.preprocess_totalcapture --config configs/totalcapture_video_test.yaml
-```
-
-Or run manually with CLI overrides:
-
-```bash
-python -m src.data.preprocess.preprocess_totalcapture \
-    --root /data/fzliang/totalcapture \
-    --camera cam1 \
-    --output ./data/interim/video_manifest.csv
-```
-
-### 4. Run the Full Pipeline
-
-The unified pipeline supports four stages: `extract` (video skeleton), `slice` (IMU-skeleton slicing into windows), `train`, `test`.
+The unified pipeline supports five stages: `preprocess` (raw data alignment), `extract` (video skeleton), `slice` (align + windowing), `train`, `test`.
 
 
 ```bash
@@ -101,13 +75,14 @@ The unified pipeline supports four stages: `extract` (video skeleton), `slice` (
 ./run.sh configs/totalcapture_video_test.yaml all
 
 # Or run individual stages
+./run.sh configs/totalcapture_video_test.yaml preprocess   # raw ->  NPZ + video manifest
 ./run.sh configs/totalcapture_video_test.yaml extract      # video -> skeleton (for video workflows)
-./run.sh configs/totalcapture_video_test.yaml slice        # IMU + skeleton -> npz + csv
+./run.sh configs/totalcapture_video_test.yaml slice        # align extract -> windowed NPZ + csv
 ./run.sh configs/totalcapture_video_test.yaml train        # train matcher
 ./run.sh configs/totalcapture_video_test.yaml test         # evaluate matcher
 ```
 
-> **Note:** The default stage order for `all` is `extract -> slice -> train -> test`. For Vicon-based configs (no `extract` section), the extract stage is automatically skipped.
+> **Note:** The default stage order for `all` is `preprocess -> extract -> slice -> train -> test`. `extract` is automatically skipped if no `extract` section is present in the config.
 
 You can also call the Python CLI directly:
 
@@ -151,7 +126,8 @@ Autism-project/
 │   │   ├── train.py              # Training script
 │   │   ├── eval.py               # Standard evaluation
 │   │   ├── eval_custom.py        # 2-person matching evaluation
-│   │   └── eval_grouped.py       # Grouped evaluation
+│   │   ├── eval_grouped.py       # Grouped evaluation
+│   │   └── eval_synchronous.py   # Multi-person HOTA/AssA evaluation
 │   │
 │   ├── datasets/                 # Dataset adapters + PyTorch Datasets
 │   │   ├── alignment_dataset.py  # WindowAlignmentDataset
@@ -163,13 +139,9 @@ Autism-project/
 │   ├── data/                     # Data preparation & slicing tools
 │   │   ├── slice/                  # IMU-skeleton slicing entrypoints
 │   │   │   ├── totalcapture.py
-│   │   │   └── custom_4fold.py
+│   │   │   └── (all datasets now share the same slice entrypoint)
 │   │   ├── preprocess/             # Preprocessing helpers
-│   │   │   └── preprocess_totalcapture.py  # Generate video manifest for TotalCapture
-│   │   ├── preprocessors/
-│   │   │   ├── imu.py
-│   │   │   ├── skeleton.py
-│   │   │   └── wham.py
+│   │   │   └── totalcapture_unified.py  # Generate unified NPZ for TotalCapture
 │   │   └── adapters/
 │   │       └── alphapose.py
 │   │
@@ -216,59 +188,52 @@ Autism-project/
 
 ## Data Preparation & Slicing
 
-### Step 1: Preprocess (Video manifest generation)
+### Step 1: Preprocess (unified NPZ generation)
 
-For **video-based workflows** (e.g. `configs/totalcapture_video_test.yaml` or `configs/totalcapture_video.yaml`), you first need to generate a `video_manifest.csv` that lists all videos to be processed. This is a one-time preprocessing step.
+The `preprocess` stage scans raw dataset directories and produces **standardized per-sequence NPZ files**. These NPZs are the canonical data format for the rest of the pipeline.
+
+For **TotalCapture** this includes:
+- IMU sensor data
+- GT skeleton (from Vicon)
+- GT annotations (`person_id`, `bbox`, `visibility`)
+- Video path reference
+- `video_manifest.csv` (for extract stage)
 
 ```bash
-# Generate manifest from config
-python -m src.data.preprocess.preprocess_totalcapture --config configs/totalcapture_video_test.yaml
-
-# Or specify manually
-python -m src.data.preprocess.preprocess_totalcapture \
-    --root /data/fzliang/totalcapture \
-    --camera cam1 \
-    --output ./data/interim/video_manifest.csv
-
-# Generate manifest for ALL cameras
-python -m src.data.preprocess.preprocess_totalcapture \
-    --root /data/fzliang/totalcapture \
-    --camera all \
-    --output ./data/interim/video_manifest_all.csv
+python -m src.pipelines --config configs/totalcapture_video_test.yaml --stages preprocess
 ```
 
-> **Note:** For Vicon-based configs (e.g. `configs/totalcapture_vicon_test.yaml`), this step is **not needed** because skeleton data already exists as ground-truth motion capture.
+> **Note:** Vicon-based configs also use the same preprocess stage now. It is part of the default `all` stage list.
 
 ---
 
-### Step 2: Slice
+### Step 2: Slice (align + windowing)
 
-The `slice` stage turns raw IMU + skeleton data into windowed training examples. It produces two kinds of outputs:
+The `slice` stage reads the unified NPZs from `preprocess`, optionally aligns extracted video skeletons into them, and slices into windowed training/testing examples.
 
-1. **Per-sequence `.npz` files** — Each sequence gets one compressed NPZ containing the full synchronized IMU and skeleton arrays.
-2. **CSV metadata tables** — Sliding-window indices that point into the per-sequence NPZs.
+It produces:
+1. **Enriched per-sequence `.npz` files** — original unified NPZ plus `extract_*` arrays and `gt_to_extract_map` (when `skeleton_source=alphapose`).
+2. **CSV metadata tables** — sliding-window indices with `skeleton_source`, `person_idx`, `imu_idx` for independent-person training.
 
 #### Running Slice
 
 ```bash
 # As part of the full pipeline
-./run.sh configs/totalcapture_vicon_test.yaml all
+./run.sh configs/totalcapture_video_test.yaml all
 
 # Or run only the slice stage
-./run.sh configs/totalcapture_vicon_test.yaml slice
+./run.sh configs/totalcapture_video_test.yaml slice
 ```
 
-Under the hood this executes `src.datasets.totalcapture.TotalCaptureAdapter` (or `src.data.slice.custom_4fold` for custom configs).
+Under the hood this executes `src.datasets.totalcapture.TotalCaptureAdapter` for all supported datasets.
 
 #### Output Layout
 
-After slicing you will see:
-
 ```
-data/processed/<dataset_name>/
+data/interim/<project>/slice/
 ├── sequences/
-│   ├── S1_walking1.npz
-│   ├── S1_walking2.npz
+│   ├── totalcapture_S1_acting1_cam1.npz
+│   ├── totalcapture_S1_acting2_cam1.npz
 │   └── ...
 ├── sequences.csv
 ├── windows_all.csv
@@ -277,51 +242,64 @@ data/processed/<dataset_name>/
 └── windows_test.csv
 ```
 
-The exact `<dataset_name>` is taken from `paths.output_dir` in your config (e.g. `totalcapture` or `custom_4fold`).
+### Unified NPZ Schema
 
-### What's Inside the NPZ Files?
-
-Every `.npz` under `sequences/` contains exactly two arrays:
+Each `.npz` under `sequences/` contains the full time-axis data for one sequence:
 
 | Key | Shape | Description |
 |-----|-------|-------------|
-| `imu` | `(T, 48)` | 48-dimensional IMU feature per frame |
-| `skeleton` | `(T, 17, 3)` | 17-joint 3D skeleton per frame (Human3.6M format) |
+| `video_path` | scalar (str) | Original video path |
+| `dataset` | scalar (str) | Dataset name |
+| `sequence_id` | scalar (str) | Unique sequence ID |
+| `frame_ids` | `(T,)` | Frame indices aligned to video |
+| `imu` | `(T, N_imu, 48)` | IMU features per frame |
+| `imu_ids` | `(N_imu,)` | Global IMU / person IDs |
+| `gt_person_ids` | `(N_gt,)` | GT person IDs |
+| `gt_bboxes` | `(T, N_gt, 4)` | GT bounding boxes `[x1, y1, x2, y2]` |
+| `gt_visibility` | `(T, N_gt)` | Bool mask for GT presence |
+| `gt_skeleton` | `(T, N_gt, 17, 3)` | GT 3D skeleton (H36M format) |
+| `extract_person_ids` | `(N_pred,)` | Extracted track IDs |
+| `extract_bboxes` | `(T, N_pred, 4)` | Extracted bboxes |
+| `extract_visibility` | `(T, N_pred)` | Extracted presence mask |
+| `extract_skeleton` | `(T, N_pred, 17, 3)` | Extracted skeleton |
+| `gt_to_extract_map` | `(T, N_gt)` | IoU-based mapping: GT → extract track index (`-1` = unmatched) |
 
-`T` is the number of frames in that specific sequence. These arrays are **not** pre-cut into windows; the window slicing happens at training time via the CSV metadata.
+For **single-person** datasets, `N_imu = 1` and `N_gt = 1`. For **multi-person**, all arrays expand naturally along the person dimension.
 
-### CSV Format
+### CSV Format (`windows_{train,val,test}.csv`)
 
-The slice stage writes four CSV files. The most important ones for training are `windows_<split>.csv` (e.g. `windows_train.csv`). Each row represents one training/validation/test window:
+Each row is one training window:
 
 | Column | Meaning |
 |--------|---------|
-| `subject` | Subject identifier (e.g. `S1`, `S2`) |
-| `session` | Session / action name (e.g. `walking1`, `acting2`) |
+| `subject` | Subject identifier (e.g. `S1`) |
+| `session` | Session / action name (e.g. `acting1`) |
 | `split` | `train`, `val`, or `test` |
-| `npz_path` | Relative path to the per-sequence NPZ (e.g. `sequences/S1_walking1.npz`) |
-| `window_start` | Starting frame index inside the sequence NPZ |
-| `window_end` | Ending frame index inside the sequence NPZ |
-| `window_len` | Length of the window (usually `config.slice.window_len`) |
+| `npz_path` | Relative path to the per-sequence NPZ |
+| `window_start` | Starting frame index |
+| `window_end` | Ending frame index |
+| `window_len` | Window length |
+| `skeleton_source` | `gt` or `extract` — which skeleton to load for training |
+| `person_idx` | Index of the person inside the NPZ |
+| `imu_idx` | Index of the IMU inside the NPZ |
 
-During training, `WindowAlignmentDataset` reads these CSVs, loads the referenced NPZ on demand, and extracts `imu[window_start:window_end]` and `skeleton[window_start:window_end]` as a single training sample.
+`WindowAlignmentDataset` reads the CSV, loads the NPZ on demand, and uses `skeleton_source` + `person_idx` + `imu_idx` to extract the correct `(imu, skeleton)` pair. For `extract` source, missing frames (where `gt_to_extract_map == -1`) are filled with zeros.
 
 ### Key Config Options
 
-Inside the `slice` section of your YAML:
-
 ```yaml
 slice:
-  train_subjects: [S1, S2, S3]   # subjects assigned to train split
-  val_subjects: [S4]             # subjects assigned to val split
-  test_subjects: [S5]            # subjects assigned to test split
-  window_len: 60                 # frames per window
-  stride: 30                     # sliding-window step
-  skeleton_source: vicon         # or "alphapose" / "wham"
-  max_sequences: null            # limit sequences per subject (for quick tests)
+  window_len: 24
+  stride: 16
+  train_subjects: S1,S2,S3
+  val_subjects: S4
+  test_subjects: S5
+  max_sequences: 1          # 0 = all sequences
+  skeleton_source: alphapose   # auto-derived from extract.pose_estimator
+  skeleton_root: ...        # auto-derived from extract.results_root
 ```
 
-> **Tip:** The adapter gracefully skips subjects that are not assigned to any split, so you can safely point `data_root` at a folder containing more subjects than you actually want to use.
+> **Tip:** All paths under `slice` are auto-derived by `resolve_config`. You only need to override them for non-standard layouts.
 
 ---
 
@@ -350,12 +328,12 @@ preprocess:
   dataset: totalcapture
   raw_root: /data/fzliang/totalcapture
   camera: cam1
+  # output path is auto-derived: data/interim/{project}/preprocess/video_manifest.csv
 
 extract:
-  detector: bytetrack              # or "alphapose"
-  tracker: bytetrack               # or "alphapose"
-  pose_estimator: alphapose        # or "wham"
-  manifest_csv: ./data/interim/video_manifest.csv
+  detector: bytetrack
+  tracker: bytetrack
+  pose_estimator: alphapose
   limit: 1
   skip_existing: true
   gpu: 0
@@ -369,7 +347,6 @@ extract:
     known_num_people: 1
 
 slice:
-  root: /data/fzliang/totalcapture
   window_len: 24
   stride: 16
   sensor_order: [L_LowLeg, R_LowLeg, L_LowArm, R_LowArm]
@@ -377,7 +354,7 @@ slice:
   val_subjects: S1
   test_subjects: S1
   max_sequences: 1
-  # skeleton_source and skeleton_root are auto-derived from extract settings
+  # root, skeleton_source, skeleton_root are auto-derived
 
 train:
   model:
@@ -394,16 +371,27 @@ train:
 
 test:
   batch_size: 32
+  grouped_test:
+    enabled: true
+    group_sizes: "2,4,6,8,16"
+    num_trials: 50
+    chunk_windows: 30
+    min_chunk_windows: 15
+    seed: 42
+  synchronous_test:
+    enabled: true
+    window_size: 24      # Hungarian matching window size
+    stride: 8            # Window step for synchronous eval
 ```
 
-> **Auto-derived paths:** The pipeline automatically creates a timestamped
-> `work_dir` (e.g. `./work/totalcapture_video_test_20240415_143022/`) and derives
-> all stage I/O folders from it:
-> - `extract` outputs → `{work_dir}/extract`
-> - `slice` outputs → `{work_dir}/slice`
-> - `train` outputs → `{work_dir}/train`
+> **Auto-derived paths:** `resolve_config` creates a stable `work_dir` under
+> `data/interim/{project}/` and derives all stage I/O folders from it:
+> - `preprocess` outputs → `{work_dir}/preprocess/`
+> - `extract` outputs → `{work_dir}/extract/`
+> - `slice` outputs → `{work_dir}/slice/`
+> - `train` outputs → `{work_dir}/train/`
 > - `paths.data_root`, `train_csv`, `val_csv`, `test_csv` are inferred automatically.
-> You only need to override them if you want non-standard locations.
+> You only need to override them for non-standard layouts.
 
 > **Config fragments:** per-component defaults are loaded automatically from
 > `configs/trackers/{name}.yaml` and `configs/pose_estimators/{name}.yaml`.
@@ -414,11 +402,52 @@ test:
 ```
 
 The pipeline will:
-1. **Preprocess** — generate `video_manifest.csv` from the dataset root
-2. **Extract** skeletons from the videos listed in the manifest
-3. **Slice** the extracted skeletons with IMU into `npz` + `csv`
-4. **Train** the IMU-Video matcher
-5. **Test** the trained checkpoint
+1. **Preprocess** — scan raw data, generate unified `npz` + `video_manifest.csv`
+2. **Extract** — run video skeleton extraction (ByteTrack + AlphaPose, etc.)
+3. **Slice** — align extracted skeletons into the unified NPZs via bbox IoU, then slice into windowed CSVs
+4. **Train** — train the IMU-Video matcher in independent-person mode
+5. **Test** — run standard eval, grouped eval, and **synchronous multi-person eval** (HOTA/AssA)
+
+---
+
+## Synchronous Multi-Person Evaluation (HOTA / AssA)
+
+When `test.synchronous_test.enabled: true`, the `test` stage runs `eval_synchronous.py`, which evaluates identity association accuracy over full sequences:
+
+1. Load each test sequence NPZ (with `extract_skeleton`, `gt_to_extract_map`, etc.).
+2. Slide a temporal window over the full sequence.
+3. Within each window, compute embeddings for **all visible extracted tracks** and **all IMUs**.
+4. Run **Hungarian matching** per window to assign predicted tracks to IMU IDs.
+5. Fuse adjacent window assignments into a per-frame track ID sequence.
+6. Format the results as MOT challenge data and compute **HOTA** metrics using `trackeval`.
+
+Key metrics reported:
+- **HOTA** — overall tracking accuracy
+- **AssA** — association accuracy (how consistent the ID assignments are over time)
+- **AssRe / AssPr** — association recall / precision
+- **DetA / DetRe / DetPr** — detection accuracy, recall, precision
+- **LocA** — localization accuracy
+
+Example output:
+```json
+{
+  "num_sequences": 1,
+  "sequences": [
+    {
+      "sequence_id": "totalcapture_S1_acting1_cam1",
+      "HOTA": 1.0,
+      "AssA": 1.0,
+      "DetA": 1.0,
+      ...
+    }
+  ],
+  "mean_HOTA": 1.0,
+  "mean_AssA": 1.0,
+  ...
+}
+```
+
+> **Note:** `trackeval` is required. If you encounter NumPy 2.x compatibility issues with PyTorch 2.1, use `numpy<2` and `scipy<1.14` (the package still works despite the pip warning).
 
 ---
 

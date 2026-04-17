@@ -24,7 +24,7 @@ train:
     motionbert_root: /home/fzliang/MotionBERT
     motionbert_config: configs/pose3d/MB_ft_h36m_global_lite.yaml
     motionbert_ckpt: checkpoint/pretrain/MB_lite_models.bin
-    imu_ckpt: /home/fzliang/despite/totalcapture/checkpoints/si_totalcapture_best.pth
+    imu_ckpt: /home/fzliang/despite/pretrained_models/v2/SIE_v2.pth
   epochs: 50
   batch_size: 64
   num_workers: 8

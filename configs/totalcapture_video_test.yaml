@@ -7,13 +7,11 @@ preprocess:
   dataset: totalcapture
   raw_root: /data/fzliang/totalcapture
   camera: cam1
-  output: ./data/interim/video_manifest.csv
 
 extract:
   detector: bytetrack
   tracker: bytetrack
   pose_estimator: alphapose
-  manifest_csv: ./data/interim/video_manifest.csv
   limit: 1
   skip_existing: true
   gpu: 0
@@ -27,7 +25,6 @@ extract:
     known_num_people: 1
 
 slice:
-  root: /data/fzliang/totalcapture
   window_len: 24
   stride: 16
   sensor_order: [L_LowLeg, R_LowLeg, L_LowArm, R_LowArm]
@@ -58,3 +55,7 @@ test:
     chunk_windows: 30
     min_chunk_windows: 15
     seed: 42
+  synchronous_test:
+    enabled: true
+    window_size: 24
+    stride: 1

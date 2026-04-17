@@ -54,24 +54,42 @@ class WindowAlignmentDataset(Dataset):
 
     def _load_npz(self, path: Path) -> Dict[str, np.ndarray]:
         if path not in self._cache:
-            arr = np.load(path)
-            self._cache[path] = {
-                "imu": arr["imu"].astype(np.float32),
-                "skeleton": arr["skeleton"].astype(np.float32),
-            }
+            data = np.load(path, allow_pickle=True)
+            self._cache[path] = {k: data[k] for k in data.files}
         return self._cache[path]
 
     def __getitem__(self, index: int):
         row = self.rows[index]
         npz_rel = row["npz_path"]
         npz_path = (self.root_dir / npz_rel).resolve()
-        item = self._load_npz(npz_path)
+        data = self._load_npz(npz_path)
 
         st = int(row["window_start"])
         ed = int(row["window_end"])
 
-        imu = item["imu"][st:ed]
-        skel = item["skeleton"][st:ed]
+        imu_idx = int(row.get("imu_idx", 0))
+        person_idx = int(row.get("person_idx", 0))
+        skeleton_source = row.get("skeleton_source", "gt")
+
+        # IMU: format [T, N_imu, 48] (single-person [T, 48] also handled)
+        imu = data["imu"]
+        if imu.ndim == 3:
+            imu = imu[st:ed, imu_idx]
+        else:
+            imu = imu[st:ed]
+
+        # Skeleton
+        if skeleton_source == "gt":
+            skel = data["gt_skeleton"][st:ed, person_idx]
+        elif skeleton_source == "extract":
+            pred_indices = data["gt_to_extract_map"][st:ed, person_idx]
+            skel = np.zeros((ed - st, 17, 3), dtype=np.float32)
+            extract_skeleton = data["extract_skeleton"]
+            for i, pidx in enumerate(pred_indices):
+                if pidx != -1:
+                    skel[i] = extract_skeleton[st + i, pidx]
+        else:
+            raise ValueError(f"Unknown skeleton_source: {skeleton_source}")
 
         if self.imu_sensor is not None:
             imu = self._single_sensor_to_48d(imu, self.imu_sensor, self.repeat_single_sensor)

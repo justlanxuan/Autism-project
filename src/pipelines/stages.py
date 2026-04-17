@@ -43,6 +43,41 @@ def _run(cmd: list[str], cwd: Path | None = None) -> None:
     subprocess.run(cmd, check=True, cwd=str(cwd) if cwd else str(_repo_root()), env=_env_with_pythonpath())
 
 
+class PreprocessStage(PipelineStage):
+    """Run raw-data preprocessing according to dataset config."""
+
+    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        config_path = state["config_path"]
+        cfg = resolve_config(config_path)
+        preprocess_cfg = cfg.get("preprocess", {})
+        dataset = preprocess_cfg.get("dataset", "")
+
+        if dataset == "totalcapture":
+            script = "-m"
+            module = "src.data.preprocess.totalcapture"
+        elif dataset == "custom":
+            script = "-m"
+            module = "src.data.preprocess.custom"
+        else:
+            print(f"[INFO] Preprocess stage not implemented for dataset '{dataset}'; skipping.")
+            return state
+
+        manifest_csv = preprocess_cfg.get("output")
+        output_dir = str(Path(manifest_csv).parent) if manifest_csv else str(Path(cfg.get("work_dir", "")) / "preprocess")
+        cmd = [
+            sys.executable, script, module,
+            "--config", str(config_path),
+            "--output_dir", output_dir,
+        ]
+        if manifest_csv:
+            cmd.extend(["--manifest_csv", manifest_csv])
+
+        _run(cmd)
+        work_dir = cfg.get("work_dir", "")
+        state["preprocess_dir"] = str(Path(work_dir) / "preprocess")
+        return state
+
+
 class SliceStage(PipelineStage):
     """Run IMU-skeleton slicing according to dataset config."""
 
@@ -52,14 +87,9 @@ class SliceStage(PipelineStage):
         preprocess_cfg = cfg.get("preprocess", {})
         dataset = preprocess_cfg.get("dataset", "")
 
-        if "custom" in dataset:
-            script = "-m"
-            module = "src.data.slice.custom_4fold"
-            cmd = [sys.executable, script, module, "--config", str(config_path)]
-        else:
-            script = "-m"
-            module = "src.data.slice.totalcapture"
-            cmd = [sys.executable, script, module, "--config", str(config_path)]
+        script = "-m"
+        module = "src.data.slice.totalcapture"
+        cmd = [sys.executable, script, module, "--config", str(config_path)]
 
         _run(cmd)
         # Pass through the data_root for downstream stages
@@ -148,7 +178,7 @@ class TrainStage(PipelineStage):
 
 
 class TestStage(PipelineStage):
-    """Run standard evaluation and optional grouped evaluation."""
+    """Run standard evaluation and optional grouped / synchronous evaluation."""
 
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         config_path = state["config_path"]
@@ -158,6 +188,7 @@ class TestStage(PipelineStage):
         paths = cfg.get("paths", {})
         test = cfg.get("test", {})
         grouped = test.get("grouped_test", {})
+        synchronous = test.get("synchronous_test", {})
         out = train_cfg.get("output", {})
         folds = cfg.get("folds")
 
@@ -224,6 +255,25 @@ class TestStage(PipelineStage):
                 "--seed", str(grouped.get("seed", 42)),
                 "--save_json", str(grouped_json),
                 "--save_csv", str(grouped_csv),
+            ]
+            _run(cmd)
+
+        if synchronous.get("enabled", False):
+            sync_json = run_dir / "synchronous_results.json"
+            cmd = [
+                sys.executable,
+                "-m",
+                "src.engine.eval_synchronous",
+                "--test_csv", str(paths.get("test_csv", "")),
+                "--data_root", str(paths.get("data_root", "")),
+                "--motionbert_root", str(model.get("motionbert_root", "/home/fzliang/origin/MotionBERT")),
+                "--motionbert_config", str(model.get("motionbert_config", "configs/pose3d/MB_ft_h36m_global_lite.yaml")),
+                "--motionbert_ckpt", str(model.get("motionbert_ckpt", "")),
+                "--checkpoint", str(best_ckpt),
+                "--window_size", str(synchronous.get("window_size", 24)),
+                "--stride", str(synchronous.get("stride", 1)),
+                "--batch_size", str(test.get("batch_size", 64)),
+                "--save_json", str(sync_json),
             ]
             _run(cmd)
 

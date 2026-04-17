@@ -110,31 +110,38 @@ def compute_imu_stats_from_train_csv(train_csv: str, data_root: str | None) -> t
     rows = read_csv_rows(train_csv)
     base = Path(data_root) if data_root else Path(train_csv).resolve().parent
 
-    sums = None
-    sq_sums = None
-    count = 0
-    seen = set()
+    # Aggregate stats per (npz_path, imu_idx)
+    from collections import defaultdict
+    per_source: dict[tuple[str, int], list] = defaultdict(lambda: [None, None, 0])
+
     for row in rows:
         rel = row["npz_path"]
-        if rel in seen:
-            continue
-        seen.add(rel)
-        arr = np.load((base / rel).resolve())
-        imu = arr["imu"].astype(np.float64)
+        imu_idx = int(row.get("imu_idx", 0))
+        key = (rel, imu_idx)
+        if per_source[key][2] > 0:
+            continue  # already accumulated for this source
 
-        if sums is None:
-            sums = imu.sum(axis=0)
-            sq_sums = (imu * imu).sum(axis=0)
-        else:
-            sums += imu.sum(axis=0)
-            sq_sums += (imu * imu).sum(axis=0)
-        count += imu.shape[0]
+        data = np.load((base / rel).resolve(), allow_pickle=True)
+        imu = data["imu"].astype(np.float64)
+        if imu.ndim == 3:
+            imu = imu[:, imu_idx, :]
 
-    if count == 0 or sums is None or sq_sums is None:
+        per_source[key][0] = imu.sum(axis=0)
+        per_source[key][1] = (imu * imu).sum(axis=0)
+        per_source[key][2] = imu.shape[0]
+
+    total_count = sum(v[2] for v in per_source.values())
+    if total_count == 0:
         raise ValueError("No IMU frames found while computing stats.")
 
-    mean = sums / count
-    var = np.maximum(sq_sums / count - mean * mean, 1e-12)
+    sums = np.zeros_like(list(per_source.values())[0][0])
+    sq_sums = np.zeros_like(list(per_source.values())[0][1])
+    for s, sq, c in per_source.values():
+        sums += s
+        sq_sums += sq
+
+    mean = sums / total_count
+    var = np.maximum(sq_sums / total_count - mean * mean, 1e-12)
     std = np.sqrt(var)
     return mean.astype(np.float32), std.astype(np.float32)
 

@@ -5,13 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
-from src.pipelines.stages import SliceStage, ExtractStage, TrainStage, TestStage
+from src.pipelines.stages import PreprocessStage, SliceStage, ExtractStage, TrainStage, TestStage
 
 
 class FullPipeline:
     """Drive the full or partial workflow from a config file."""
 
     AVAILABLE_STAGES = {
+        "preprocess": PreprocessStage,
         "slice": SliceStage,
         "extract": ExtractStage,
         "train": TrainStage,
@@ -20,9 +21,9 @@ class FullPipeline:
 
     def __init__(self, config_path: str, stages: List[str] | None = None):
         self.config_path = Path(config_path).expanduser().resolve()
-        # Extract must run before slice for video-based workflows;
-        # for Vicon workflows ExtractStage simply skips when no extract section is present.
-        self.stages = stages or ["extract", "slice", "train", "test"]
+        # Default full pipeline includes preprocess; extract must run before slice
+        # for video-based workflows. ExtractStage simply skips when no extract section.
+        self.stages = stages or ["preprocess", "extract", "slice", "train", "test"]
         for name in self.stages:
             if name not in self.AVAILABLE_STAGES:
                 raise ValueError(f"Unknown stage: {name}. Available: {list(self.AVAILABLE_STAGES.keys())}")

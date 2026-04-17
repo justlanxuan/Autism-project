@@ -10,7 +10,7 @@ from typing import Dict, List, Sequence, Tuple
 
 import numpy as np
 
-from src.data.adapters.alphapose import load_alphapose_skeleton, find_skeleton_for_sequence
+from src.data.adapters.alphapose import load_alphapose_skeleton, find_skeleton_for_sequence, load_alphapose_multiperson
 
 
 SENSOR_ORDER = ["L_LowLeg", "R_LowLeg", "L_LowArm", "R_LowArm"]
@@ -25,8 +25,10 @@ class SequenceMeta:
     num_frames: int
 
 
-def parse_subjects(spec: str) -> List[str]:
-    return [x.strip() for x in spec.split(",") if x.strip()]
+def parse_subjects(spec: str | int | None) -> List[str]:
+    if spec is None:
+        return []
+    return [x.strip() for x in str(spec).split(",") if x.strip()]
 
 
 def parse_sensor_order(spec: Sequence[str] | str | None) -> List[str]:
@@ -213,6 +215,90 @@ def write_csv(path: Path, rows: List[Dict[str, object]], fieldnames: Sequence[st
             writer.writerow(r)
 
 
+def _compute_iou(box_a: np.ndarray, box_b: np.ndarray) -> float:
+    """Compute IoU between two boxes in [x1, y1, x2, y2] format."""
+    x1 = max(box_a[0], box_b[0])
+    y1 = max(box_a[1], box_b[1])
+    x2 = min(box_a[2], box_b[2])
+    y2 = min(box_a[3], box_b[3])
+    inter = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    area_a = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+    area_b = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _align_extract_to_npz(
+    data: dict[str, np.ndarray],
+    alphapose_frames: dict[int, list[dict]],
+    track_ids: list[int],
+) -> dict[str, np.ndarray]:
+    """Align AlphaPose multi-person output into NPZ.
+
+    Args:
+        data: NPZ dict (must contain gt_bboxes, gt_visibility, gt_person_ids, frame_ids)
+        alphapose_frames: mapping frame_idx -> list of detection dicts
+        track_ids: sorted unique track ids from AlphaPose output
+
+    Returns:
+        Updated data dict with extract_* and gt_to_extract_map fields.
+    """
+    T = int(data["frame_ids"].shape[0])
+    N_gt = int(data["gt_person_ids"].shape[0])
+    N_pred = len(track_ids)
+
+    extract_bboxes = np.zeros((T, N_pred, 4), dtype=np.float32)
+    extract_skeleton = np.zeros((T, N_pred, 17, 3), dtype=np.float32)
+    extract_visibility = np.zeros((T, N_pred), dtype=bool)
+
+    track_id_to_idx = {tid: i for i, tid in enumerate(track_ids)}
+
+    for t in range(T):
+        frame_idx = int(data["frame_ids"][t])
+        if frame_idx in alphapose_frames:
+            for det in alphapose_frames[frame_idx]:
+                p_idx = track_id_to_idx.get(det["track_id"])
+                if p_idx is None:
+                    continue
+                extract_bboxes[t, p_idx] = det["bbox"]
+                extract_skeleton[t, p_idx] = det["keypoints"]
+                extract_visibility[t, p_idx] = True
+
+    # Normalize each extracted track independently (same as GT skeleton preprocessing)
+    for p in range(N_pred):
+        if extract_visibility[:, p].any():
+            extract_skeleton[:, p] = normalize_skeleton(extract_skeleton[:, p])
+
+    gt_to_extract_map = np.full((T, N_gt), -1, dtype=np.int64)
+    gt_bboxes = data["gt_bboxes"]
+    gt_visibility = data["gt_visibility"]
+
+    for t in range(T):
+        for g in range(N_gt):
+            if not gt_visibility[t, g]:
+                continue
+            gt_box = gt_bboxes[t, g]
+            best_iou = -1.0
+            best_p = -1
+            for p in range(N_pred):
+                if not extract_visibility[t, p]:
+                    continue
+                iou = _compute_iou(gt_box, extract_bboxes[t, p])
+                if iou > best_iou:
+                    best_iou = iou
+                    best_p = p
+            if best_iou > 0.0:
+                gt_to_extract_map[t, g] = best_p
+
+    data = dict(data)
+    data["extract_person_ids"] = np.array(track_ids, dtype=np.int64)
+    data["extract_bboxes"] = extract_bboxes
+    data["extract_visibility"] = extract_visibility
+    data["extract_skeleton"] = extract_skeleton
+    data["gt_to_extract_map"] = gt_to_extract_map
+    return data
+
+
 class TotalCaptureAdapter:
     """Adapter that preprocesses TotalCapture raw data into NPZ + CSV."""
 
@@ -226,6 +312,9 @@ class TotalCaptureAdapter:
         self.train_subj = parse_subjects(slice_cfg.get("train_subjects", "S1,S2,S3"))
         self.val_subj = parse_subjects(slice_cfg.get("val_subjects", "S4"))
         self.test_subj = parse_subjects(slice_cfg.get("test_subjects", "S5"))
+        self.train_sessions = parse_subjects(slice_cfg.get("train_sessions", ""))
+        self.val_sessions = parse_subjects(slice_cfg.get("val_sessions", ""))
+        self.test_sessions = parse_subjects(slice_cfg.get("test_sessions", ""))
         self.max_sequences = int(slice_cfg.get("max_sequences", 0))
         self.skeleton_source = slice_cfg.get("skeleton_source", "vicon")
         self.skeleton_root = None
@@ -233,50 +322,76 @@ class TotalCaptureAdapter:
             self.skeleton_root = Path(slice_cfg.get("skeleton_root", "/home/fzliang/MotionBERT/results_totalcapture_video"))
 
     def run(self) -> Path:
+        return self._run_slice()
+
+    def _run_slice(self) -> Path:
+        """Slice from NPZs produced by the preprocess stage."""
+        import shutil
+
         seq_dir = self.out_dir / "sequences"
         seq_dir.mkdir(parents=True, exist_ok=True)
 
-        all_seqs = find_sequences(self.root)
+        npz_paths = sorted((self.root / "sequences").glob("*.npz"))
         if self.max_sequences > 0:
-            all_seqs = all_seqs[: self.max_sequences]
+            npz_paths = npz_paths[: self.max_sequences]
 
         sequence_rows: List[Dict[str, object]] = []
         window_rows: List[Dict[str, object]] = []
 
-        for subject, session, vicon_path, imu_path in all_seqs:
+        for npz_path in npz_paths:
+            data = dict(np.load(npz_path, allow_pickle=True))
+            sequence_id = str(data["sequence_id"].item())
+            # Parse subject/session from sequence_id
+            if sequence_id.startswith("totalcapture_"):
+                parts = sequence_id.split("_")
+                subject = parts[1]
+                session = "_".join(parts[2:-1])
+            elif sequence_id.startswith("custom_"):
+                session = sequence_id[len("custom_"):]
+                subject = "all"
+            else:
+                subject = "unknown"
+                session = sequence_id
+
             splits = []
-            if subject in self.train_subj:
-                splits.append("train")
-            if subject in self.val_subj:
-                splits.append("val")
-            if subject in self.test_subj:
-                splits.append("test")
+            use_session_split = bool(self.train_sessions or self.val_sessions or self.test_sessions)
+            if use_session_split:
+                if session in self.train_sessions:
+                    splits.append("train")
+                if session in self.val_sessions:
+                    splits.append("val")
+                if session in self.test_sessions:
+                    splits.append("test")
+            else:
+                if subject in self.train_subj:
+                    splits.append("train")
+                if subject in self.val_subj:
+                    splits.append("val")
+                if subject in self.test_subj:
+                    splits.append("test")
             if not splits:
-                print(f"Warning: Subject {subject} not assigned to any split, skipping {subject}_{session}...")
+                print(f"Warning: {sequence_id} (subject={subject}, session={session}) not assigned to any split, skipping...")
                 continue
 
-            quat4, acc3 = parse_xsens_sensors(imu_path, self.sensor_order)
+            tlen = int(data["frame_ids"].shape[0])
 
-            if self.skeleton_source == "alphapose":
-                skeleton_file = find_skeleton_for_sequence(subject, session, self.skeleton_root)
-                if skeleton_file is None:
-                    print(f"Warning: No AlphaPose skeleton found for {subject}_{session}, skipping...")
-                    continue
-                skel17, scores = load_alphapose_skeleton(skeleton_file)
-            else:
-                joint_names, xyz21 = parse_vicon_pos(vicon_path)
-                skel17 = map_totalcapture21_to_h36m17(joint_names, xyz21)
+            # Align extracted skeleton if requested
+            if self.skeleton_source == "alphapose" and self.skeleton_root is not None:
+                extract_dir = self._find_extract_dir(sequence_id)
+                if extract_dir is not None:
+                    skeleton_json = extract_dir / "skeleton.json"
+                    if skeleton_json.exists():
+                        alphapose_frames, track_ids = load_alphapose_multiperson(skeleton_json)
+                        data = _align_extract_to_npz(data, alphapose_frames, track_ids)
+                        data["extract_source"] = str(skeleton_json)
+                    else:
+                        print(f"Warning: skeleton.json not found in {extract_dir} for {sequence_id}")
+                else:
+                    print(f"Warning: No extract result found for {sequence_id}")
 
-            tlen = min(skel17.shape[0], quat4.shape[0])
-            skel17 = skel17[:tlen]
-            quat4 = quat4[:tlen]
-            acc3 = acc3[:tlen]
-
-            imu48 = convert_imu_to_48(quat4, acc3)
-            skel17 = normalize_skeleton(skel17)
-
-            rel_npz = Path("sequences") / f"{subject}_{session}.npz"
-            np.savez_compressed(self.out_dir / rel_npz, imu=imu48, skeleton=skel17)
+            rel_npz = Path("sequences") / f"{sequence_id}.npz"
+            out_npz = self.out_dir / rel_npz
+            np.savez_compressed(out_npz, **data)
 
             sequence_rows.append(
                 {
@@ -288,21 +403,40 @@ class TotalCaptureAdapter:
                 }
             )
 
+            # Choose skeleton source for training windows
+            train_skeleton_source = self.skeleton_source
+            has_gt_skeleton = "gt_skeleton" in data
+            n_imu = int(data["imu_ids"].shape[0])
+            n_gt = int(data["gt_person_ids"].shape[0]) if "gt_person_ids" in data else 0
+            has_extract = "extract_skeleton" in data and data["extract_skeleton"].shape[1] > 0
+
             if tlen >= self.window_len:
                 for st in range(0, tlen - self.window_len + 1, self.stride):
                     ed = st + self.window_len
                     for split in splits:
-                        window_rows.append(
-                            {
-                                "subject": subject,
-                                "session": session,
-                                "split": split,
-                                "npz_path": str(rel_npz),
-                                "window_start": int(st),
-                                "window_end": int(ed),
-                                "window_len": int(self.window_len),
-                            }
-                        )
+                        if train_skeleton_source == "vicon" and has_gt_skeleton:
+                            skeleton_source = "gt"
+                        elif has_extract:
+                            skeleton_source = "extract"
+                        else:
+                            skeleton_source = train_skeleton_source
+
+                        for person_idx in range(max(n_gt, 1)):
+                            for imu_idx in range(n_imu):
+                                window_rows.append(
+                                    {
+                                        "subject": subject,
+                                        "session": session,
+                                        "split": split,
+                                        "npz_path": str(rel_npz),
+                                        "window_start": int(st),
+                                        "window_end": int(ed),
+                                        "window_len": int(self.window_len),
+                                        "skeleton_source": skeleton_source,
+                                        "person_idx": person_idx,
+                                        "imu_idx": imu_idx,
+                                    }
+                                )
 
         write_csv(
             self.out_dir / "sequences.csv",
@@ -313,7 +447,7 @@ class TotalCaptureAdapter:
         write_csv(
             self.out_dir / "windows_all.csv",
             window_rows,
-            ["subject", "session", "split", "npz_path", "window_start", "window_end", "window_len"],
+            ["subject", "session", "split", "npz_path", "window_start", "window_end", "window_len", "skeleton_source", "person_idx", "imu_idx"],
         )
 
         for split in ["train", "val", "test"]:
@@ -321,7 +455,7 @@ class TotalCaptureAdapter:
             write_csv(
                 self.out_dir / f"windows_{split}.csv",
                 split_rows,
-                ["subject", "session", "split", "npz_path", "window_start", "window_end", "window_len"],
+                ["subject", "session", "split", "npz_path", "window_start", "window_end", "window_len", "skeleton_source", "person_idx", "imu_idx"],
             )
 
         summary = {
@@ -336,7 +470,26 @@ class TotalCaptureAdapter:
         }
         (self.out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
 
-        print("Preprocess done")
+        print("Slice done")
         print(f"Output dir: {self.out_dir}")
         print(f"Sequences: {len(sequence_rows)}, windows: {len(window_rows)}")
         return self.out_dir
+
+    def _find_extract_dir(self, sequence_id: str) -> Path | None:
+        """Find extract result directory matching sequence_id under skeleton_root."""
+        if self.skeleton_root is None:
+            return None
+        if sequence_id.startswith("totalcapture_"):
+            core = sequence_id[len("totalcapture_"):]
+            patterns = [core, f"TC_{core}"]
+        elif sequence_id.startswith("custom_"):
+            core = sequence_id[len("custom_"):]
+            patterns = [core]
+        else:
+            patterns = [sequence_id]
+        for subdir in self.skeleton_root.iterdir():
+            if not subdir.is_dir():
+                continue
+            if any(pat in subdir.name for pat in patterns):
+                return subdir
+        return None
